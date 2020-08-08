@@ -1,10 +1,6 @@
-﻿using DynamicOpenVR.IO;
-using System;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.XR;
-using Valve.VR;
 
 namespace AvatarScriptPack
 {
@@ -121,8 +117,7 @@ namespace AvatarScriptPack
         [Tooltip("Called when released after long click.")]
         public UnityEvent releaseAfterLongClickEvents = new UnityEvent();
 
-        private KeyCode triggerButton;
-        
+        protected bool checkIndex, checkVive, checkOculus, checkWMR;
         protected const float interval = 0.5f;
         protected const float longClickInterval = 0.6f;
         protected float pressTime;
@@ -131,43 +126,33 @@ namespace AvatarScriptPack
         protected bool checkDoubleClick = false;
         protected bool checkLongClick = false;
         protected bool longClicked = false;
-
+        
         protected bool triggerPressed = false;
-
-
-        private VectorInput _leftTriggerAction, _rightTriggerAction;
-        private BooleanInput _leftAAction, _rightAAction;
-        private BooleanInput _leftTrackpadAction, _rightTrackpadAction;
 
 
         // Use this for initialization
         void Start()
         {
-            _leftTriggerAction = new VectorInput("/actions/main/in/lefttriggervalue");
-            _rightTriggerAction = new VectorInput("/actions/main/in/righttriggervalue");
-            _leftAAction = new BooleanInput("/actions/main/in/lefta");
-            _rightAAction = new BooleanInput("/actions/main/in/righta");
-            _leftTrackpadAction = new BooleanInput("/actions/main/in/lefttrackpadpress");
-            _rightTrackpadAction = new BooleanInput("/actions/main/in/righttrackpadpress");
-
             string model = XRDevice.model != null ? XRDevice.model.ToLower() : "";
-            
-
+            checkIndex = false;
+            checkVive = false;
+            checkOculus = false;
+            checkWMR = false;
             if (model.Contains("index"))
             {
-                triggerButton = (KeyCode)IndexTriggerButton;
+                checkIndex = true;
             }
             else if (model.Contains("vive"))
             {
-                triggerButton = (KeyCode)ViveTriggerButton;
+                checkVive = true;
             }
             else if (model.Contains("oculus"))
             {
-                triggerButton = (KeyCode)OculusTriggerButton;
+                checkOculus = true;
             }
             else
             {
-                triggerButton = (KeyCode)WMRTriggerButton;
+                checkWMR = true;
             }
             //Debug.Log("model: " + model);
         }
@@ -175,121 +160,51 @@ namespace AvatarScriptPack
         // Update is called once per frame
         void Update()
         {
-            if (triggerButton == KeyCode.None) {
-                enabled = false;
+            //foreach (KeyCode kcode in Enum.GetValues(typeof(KeyCode)))
+            //{
+            //    if (Input.GetKeyDown(kcode))
+            //        Console.WriteLine("KeyCode down: " + kcode);
+            //    if (Input.GetKey(kcode))
+            //        Console.WriteLine("KeyCode hold: " + kcode);
+            //    if (Input.GetKeyUp(kcode))
+            //        Console.WriteLine("KeyCode up: " + kcode);
+            //}
+            KeyCode triggerButton = (checkIndex)
+                                           ? (KeyCode)IndexTriggerButton
+                                           : (checkVive)
+                                           ? (KeyCode)ViveTriggerButton
+                                           : (checkOculus)
+                                           ? (KeyCode)OculusTriggerButton
+                                           : (checkWMR)
+                                           ? (KeyCode)WMRTriggerButton
+                                           : KeyCode.None;
+            if (triggerButton == KeyCode.None)
                 return;
-            }
-
-            BooleanInput buttonAction = null;
-
-            if(triggerButton == (KeyCode)IndexButton.LeftInnerFace)
+            if(true)
             {
-                buttonAction = _leftAAction;
-            }
-            else if (triggerButton == (KeyCode)IndexButton.RightInnerFace)
-            {
-                buttonAction = _rightAAction;
-            }
-            else if (triggerButton == (KeyCode)IndexButton.LeftTrackpadPress)
-            {
-                buttonAction = _leftTrackpadAction;
-            }
-            else if (triggerButton == (KeyCode)IndexButton.RightTrackpadPress)
-            {
-                buttonAction = _rightTrackpadAction;
-            }
-            else
-            {
-                return;
-            }
-
-            if (triggerButton == (KeyCode)ViveButton.LeftTrigger || triggerButton == (KeyCode)ViveButton.RightTrigger)
-            {
-                var triggerAction = (triggerButton == (KeyCode)ViveButton.LeftTrigger) ? _leftTriggerAction : _rightTriggerAction;
-                if (!triggerAction.isActive)
-                    return;
-                float triggerValue = triggerAction.value;
-                Console.WriteLine("triggerValue : " + triggerValue);
-
-                if (triggerValue > 0.5f)
+                if (Input.GetKeyDown(triggerButton))
                 {
-                    //GetKeyDown
-                    if (!triggerPressed)
-                    {
-                        Console.WriteLine(triggerAction.name + " is down");
-                        triggerPressed = true;
-                        checkDoubleClick = (Time.time - pressTime <= interval);
-                        pressTime = Time.time;
-                        OnPress();
-                        checkLongClick = true;
-                        checkClick = false;
-                    }
-                    //GetKey
-                    OnHold();
-                    if (checkLongClick && Time.time - pressTime >= longClickInterval)
-                    {
-                        Console.WriteLine(triggerAction.name + " is longClicked");
-                        checkLongClick = false;
-                        OnLongClick();
-                        longClicked = true;
-                    }
-                }
-                if (triggerPressed && triggerValue < 0.1f)
-                {
-                    Console.WriteLine(triggerAction.name + " is up");
-                    //GetKeyUp
-                    triggerPressed = false;
-                    releaseTime = Time.time;
-                    OnRelease();
-                    if (longClicked)
-                    {
-                        OnReleaseAfterLongClick();
-                        longClicked = false;
-                    }
-                    if (releaseTime - pressTime <= interval)
-                    {
-                        if (checkDoubleClick)
-                        {
-                            OnDoubleClick();
-                        }
-                        else
-                        {
-                            checkClick = true;
-                        }
-                    }
-                }
-                if (checkClick && Time.time - releaseTime > interval)
-                {
-                    checkClick = false;
-                    OnClick();
-                }
-            }
-            else
-            {
-                if (buttonAction.activeChange)
-                {
-                    //Console.WriteLine(buttonAction.name + " is pressed");
+                    //Debug.Log(triggerButton + " is pressed");
                     checkDoubleClick = (Time.time - pressTime <= interval);
                     pressTime = Time.time;
                     OnPress();
                     checkLongClick = true;
                     checkClick = false;
                 }
-                if (buttonAction.state)
+                if (Input.GetKey(triggerButton))
                 {
-                    //Console.WriteLine(buttonAction.name + " is hold");
+                    //Debug.Log(triggerButton + " is hold");
                     OnHold();
                     if (checkLongClick && Time.time - pressTime >= longClickInterval)
                     {
-                        //Console.WriteLine(buttonAction.name + " is longClicked");
                         checkLongClick = false;
                         OnLongClick();
                         longClicked = true;
                     }
                 }
-                if (buttonAction.inactiveChange)
+                if (Input.GetKeyUp(triggerButton))
                 {
-                    //Console.WriteLine(buttonAction.name + " is up");
+                    //Debug.Log(triggerButton + " is up");
                     releaseTime = Time.time;
                     OnRelease();
                     if (longClicked)
@@ -316,49 +231,49 @@ namespace AvatarScriptPack
                     OnClick();
                 }
             }
-
+            
 
         }
 
         void OnClick()
         {
-            //Console.WriteLine("OnClick");
+            //Debug.Log("OnClick");
             clickEvents.Invoke();
         }
 
         void OnDoubleClick()
         {
-            //Console.WriteLine("OnDoubleClick");
+            //Debug.Log("OnDoubleClick");
             doubleClickEvents.Invoke();
         }
 
         void OnLongClick()
         {
-            //Console.WriteLine("OnLongClick");
+            //Debug.Log("OnLongClick");
             longClickEvents.Invoke();
         }
 
         void OnPress()
         {
-            //Console.WriteLine("OnPress");
+            //Debug.Log("OnPress");
             pressEvents.Invoke();
         }
 
         void OnHold()
         {
-            //Console.WriteLine("OnHold");
+            //Debug.Log("OnHold");
             holdEvents.Invoke();
         }
 
         void OnRelease()
         {
-            //Console.WriteLine("OnRelease");
+            //Debug.Log("OnRelease");
             releaseEvents.Invoke();
         }
 
         void OnReleaseAfterLongClick()
         {
-            //Console.WriteLine("OnReleaseAfterLongClick");
+            //Debug.Log("OnRelease");
             releaseAfterLongClickEvents.Invoke();
         }
 
