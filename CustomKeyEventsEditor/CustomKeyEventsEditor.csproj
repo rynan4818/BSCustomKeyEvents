@@ -48,7 +48,7 @@
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
       <HintPath>D:\SteamLibrary\SteamApps\common\Beat Saber\Beat Saber_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
-      <Private>False</Private>
+      <Private>True</Private>
     </Reference>
     <Reference Include="UnityEngine.VRModule">
       <HintPath>D:\SteamLibrary\SteamApps\common\Beat Saber\Beat Saber_Data\Managed\UnityEngine.VRModule.dll</HintPath>
