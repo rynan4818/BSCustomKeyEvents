@@ -154,6 +154,7 @@ namespace AvatarScriptPack
 			{
 				checkWMR = true;
 			}
+			CustomKeyEvents.Logger.log.Debug("model: " + model);
 			//Debug.Log("model: " + model);
 		}
 
@@ -185,6 +186,7 @@ namespace AvatarScriptPack
 				if (Input.GetKeyDown(triggerButton))
 				{
 					//Debug.Log(triggerButton + " is pressed");
+					CustomKeyEvents.Logger.log.Debug(triggerButton + " is pressed");
 					checkDoubleClick = (Time.time - pressTime <= interval);
 					pressTime = Time.time;
 					OnPress();
@@ -194,9 +196,11 @@ namespace AvatarScriptPack
 				if (Input.GetKey(triggerButton))
 				{
 					//Debug.Log(triggerButton + " is hold");
+					//CustomKeyEvents.Logger.log.Debug(buttonAction.name + " is hold");
 					OnHold();
 					if (checkLongClick && Time.time - pressTime >= longClickInterval)
 					{
+						CustomKeyEvents.Logger.log.Debug(triggerButton + " is longClicked");
 						checkLongClick = false;
 						OnLongClick();
 						longClicked = true;
@@ -205,6 +209,7 @@ namespace AvatarScriptPack
 				if (Input.GetKeyUp(triggerButton))
 				{
 					//Debug.Log(triggerButton + " is up");
+					CustomKeyEvents.Logger.log.Debug(triggerButton + " is up");
 					releaseTime = Time.time;
 					OnRelease();
 					if (longClicked)
@@ -238,42 +243,49 @@ namespace AvatarScriptPack
 		void OnClick()
 		{
 			//Debug.Log("OnClick");
+			CustomKeyEvents.Logger.log.Debug("OnClick");
 			clickEvents.Invoke();
 		}
 
 		void OnDoubleClick()
 		{
 			//Debug.Log("OnDoubleClick");
+			CustomKeyEvents.Logger.log.Debug("OnDoubleClick");
 			doubleClickEvents.Invoke();
 		}
 
 		void OnLongClick()
 		{
 			//Debug.Log("OnLongClick");
+			CustomKeyEvents.Logger.log.Debug("OnLongClick");
 			longClickEvents.Invoke();
 		}
 
 		void OnPress()
 		{
 			//Debug.Log("OnPress");
+			CustomKeyEvents.Logger.log.Debug("OnPress");
 			pressEvents.Invoke();
 		}
 
 		void OnHold()
 		{
 			//Debug.Log("OnHold");
+			//CustomKeyEvents.Logger.log.Debug("OnHold");
 			holdEvents.Invoke();
 		}
 
 		void OnRelease()
 		{
 			//Debug.Log("OnRelease");
+			CustomKeyEvents.Logger.log.Debug("OnRelease");
 			releaseEvents.Invoke();
 		}
 
 		void OnReleaseAfterLongClick()
 		{
 			//Debug.Log("OnRelease");
+			CustomKeyEvents.Logger.log.Debug("OnReleaseAfterLongClick");
 			releaseAfterLongClickEvents.Invoke();
 		}
 

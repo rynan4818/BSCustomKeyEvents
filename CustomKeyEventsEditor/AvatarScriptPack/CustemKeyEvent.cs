@@ -80,6 +80,9 @@ namespace AvatarScriptPack
 			LeftTouchpadTouch = KeyCode.JoystickButton18,
 			RightTouchpadTouch = KeyCode.JoystickButton19,
 			Space = KeyCode.Space,
+			A = KeyCode.A, // Unity上の動作確認用
+			B = KeyCode.B, // Unity上の動作確認用
+			X = KeyCode.X, // Unity上の動作確認用
 			None = KeyCode.None
 		}
 
