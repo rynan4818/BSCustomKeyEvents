@@ -122,13 +122,18 @@ namespace AvatarScriptPack
 		protected const float longClickInterval = 0.6f;
 		protected float pressTime;
 		protected float releaseTime;
+		protected bool invalidDetected = false;
+		protected float invalidDetectedTime;
 		protected bool checkClick = false;
 		protected bool checkDoubleClick = false;
 		protected bool checkLongClick = false;
 		protected bool longClicked = false;
-		
-		protected bool triggerPressed = false;
 
+		private InputDevice leftController;
+		private InputDevice rightController;
+
+		protected bool triggerPressed = false;
+		protected bool useTriggerValue = true;
 
 		// Use this for initialization
 		void Start()
@@ -156,6 +161,8 @@ namespace AvatarScriptPack
 			}
 			CustomKeyEvents.Logger.log.Debug("model: " + model);
 			//Debug.Log("model: " + model);
+			this.leftController = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+			this.rightController = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
 		}
 
 		// Update is called once per frame
@@ -181,7 +188,15 @@ namespace AvatarScriptPack
 										   : KeyCode.None;
 			if (triggerButton == KeyCode.None)
 				return;
-			if(true)
+
+			if (useTriggerValue && (triggerButton == (KeyCode)ViveButton.LeftTrigger || triggerButton == (KeyCode)ViveButton.RightTrigger))
+			{
+				if (processControllerTrigger(triggerButton))
+				{
+					return;
+				}
+			}
+			if (true)
 			{
 				if (Input.GetKeyDown(triggerButton))
 				{
@@ -238,6 +253,148 @@ namespace AvatarScriptPack
 			}
 			
 
+		}
+
+		private bool processControllerTrigger(KeyCode triggerButton)
+		{
+			// Get triggerValue
+			float triggerValue = 0f;
+			if (triggerButton == (KeyCode)ViveButton.RightTrigger)
+			{
+				if (invalidDetected)
+				{
+					if (Time.time - invalidDetectedTime <= 1.0f)
+					{
+						// 何もしない
+						return true;
+					}
+					// 取得しなおす
+					this.rightController = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+				}
+				if (!this.rightController.isValid)
+				{
+					if (!invalidDetected)
+					{
+						invalidDetected = true;
+						invalidDetectedTime = Time.time;
+						CustomKeyEvents.Logger.log.Warn($"Cannot get right controller.");
+						// 何もしない
+						return true;
+					}
+					// 何もしない
+					return true;
+				}
+				else
+				{
+					if (invalidDetected)
+					{
+						CustomKeyEvents.Logger.log.Info($"== Right controller found. ==");
+					}
+					invalidDetected = false;
+				}
+				if (!this.rightController.TryGetFeatureValue(CommonUsages.trigger, out float rightTriggerValue))
+				{
+					CustomKeyEvents.Logger.log.Warn($"Cannot get right trigger value ({triggerButton}). Use GetKeyDown().");
+					useTriggerValue = false;
+					return false;
+				}
+				
+				triggerValue = rightTriggerValue;
+			}
+			else
+			{
+				if (invalidDetected)
+				{
+					if (Time.time - invalidDetectedTime <= 1.0f)
+					{
+						// 何もしない
+						return true;
+					}
+					// 取得しなおす
+					this.leftController = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+				}
+				if (!this.leftController.isValid)
+				{
+					if (!invalidDetected)
+					{
+						invalidDetected = true;
+						invalidDetectedTime = Time.time;
+						CustomKeyEvents.Logger.log.Warn($"Cannot get left controller.");
+						// 何もしない
+						return true;
+					}
+					// 何もしない
+					return true;
+				}
+				else
+				{
+					if (invalidDetected)
+					{
+						CustomKeyEvents.Logger.log.Info($"== Left controller found. ==");
+					}
+					invalidDetected = false;
+				}
+				if (!this.leftController.TryGetFeatureValue(CommonUsages.trigger, out float leftTriggerValue))
+				{
+					CustomKeyEvents.Logger.log.Warn($"Cannot get left trigger value ({triggerButton}). Use GetKeyDown().");
+					useTriggerValue = false;
+					return false;
+				}
+
+				triggerValue = leftTriggerValue;
+			}
+			if (triggerValue > 0.5f)
+			{
+				if (!triggerPressed)
+				{
+					CustomKeyEvents.Logger.log.Debug(triggerButton + " is pressed");
+					triggerPressed = true;
+					checkDoubleClick = (Time.time - pressTime <= interval);
+					pressTime = Time.time;
+					OnPress();
+					checkLongClick = true;
+					checkClick = false;
+				}
+				OnHold();
+				if (checkLongClick && Time.time - pressTime >= longClickInterval)
+				{
+					CustomKeyEvents.Logger.log.Debug(triggerButton + " is longClicked");
+					checkLongClick = false;
+					OnLongClick();
+					longClicked = true;
+				}
+				return true;
+			}
+			if (triggerPressed && triggerValue < 0.1f)
+			{
+				CustomKeyEvents.Logger.log.Debug(triggerButton + " is up");
+				//GetKeyUp
+				triggerPressed = false;
+				releaseTime = Time.time;
+				OnRelease();
+				if (longClicked)
+				{
+					OnReleaseAfterLongClick();
+					longClicked = false;
+				}
+				if (releaseTime - pressTime <= interval)
+				{
+					if (checkDoubleClick)
+					{
+						OnDoubleClick();
+					}
+					else
+					{
+						checkClick = true;
+					}
+				}
+			}
+			if (checkClick && Time.time - releaseTime > interval)
+			{
+				checkClick = false;
+				OnClick();
+			}
+			return true;
 		}
 
 		void OnClick()
