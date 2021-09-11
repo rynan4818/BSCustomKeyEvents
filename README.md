@@ -6,7 +6,7 @@ Custom Avatar, Custom Saber でコントローラーのボタンを押したり�
 
 ## 注意
 - この Plugin 単体で何かができるわけではなく、Custom Avatar/Custom Saber 側に事前に設定が必要です。
-- 機器と時間の都合上、私自身は Custom Avatar でしか動作確認していません。確認した機器については Releases ページを参照してください。
+- 機器と時間の都合上、私自身は Custom Avatar/Custom Saber (Saber Factory ではなく)でしか動作確認していません。確認した機器については Releases ページを参照してください。
 - PureDark 様のオリジナル版は Custom Platform でも使えたそうですが、Custom Platform を使ったことがないので動くかどうか不明です。
 
 ## 使用方法
