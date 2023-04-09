@@ -43,6 +43,8 @@ namespace AvatarScriptPack
 			RightTrigger = KeyCode.JoystickButton15,
 			LeftTrackpadTouch = KeyCode.JoystickButton16,
 			RightTrackpadTouch = KeyCode.JoystickButton17,
+			LeftGrip = KeyCode.JoystickButton4,
+			RightGrip = KeyCode.JoystickButton5,
 			Space = KeyCode.Space,
 			None = KeyCode.None
 		}
