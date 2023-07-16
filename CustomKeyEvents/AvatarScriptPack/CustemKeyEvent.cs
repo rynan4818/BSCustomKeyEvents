@@ -118,7 +118,7 @@ namespace AvatarScriptPack
 		[Tooltip("Called when released after long click.")]
 		public UnityEvent releaseAfterLongClickEvents = new UnityEvent();
 
-        protected const float interval = 0.5f;
+		protected const float interval = 0.5f;
 		protected const float longClickInterval = 0.6f;
 		protected float pressTime;
 		protected float releaseTime;
@@ -375,7 +375,7 @@ namespace AvatarScriptPack
 			return true;
 		}
 
-        void OnClick()
+		void OnClick()
 		{
 			//Debug.Log("OnClick");
 			CustomKeyEvents.Logger.log.Debug("OnClick");
