@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.XR;
+using CustomKeyEvents;
 
 namespace AvatarScriptPack
 {
@@ -117,8 +118,7 @@ namespace AvatarScriptPack
 		[Tooltip("Called when released after long click.")]
 		public UnityEvent releaseAfterLongClickEvents = new UnityEvent();
 
-		protected bool checkIndex, checkVive, checkOculus, checkWMR;
-		protected const float interval = 0.5f;
+        protected const float interval = 0.5f;
 		protected const float longClickInterval = 0.6f;
 		protected float pressTime;
 		protected float releaseTime;
@@ -138,29 +138,6 @@ namespace AvatarScriptPack
 		// Use this for initialization
 		void Start()
 		{
-			string model = XRDevice.model != null ? XRDevice.model.ToLower() : "";
-			checkIndex = false;
-			checkVive = false;
-			checkOculus = false;
-			checkWMR = false;
-			if (model.Contains("index"))
-			{
-				checkIndex = true;
-			}
-			else if (model.Contains("vive"))
-			{
-				checkVive = true;
-			}
-			else if (model.Contains("oculus"))
-			{
-				checkOculus = true;
-			}
-			else
-			{
-				checkWMR = true;
-			}
-			CustomKeyEvents.Logger.log.Debug("model: " + model);
-			//Debug.Log("model: " + model);
 			this.leftController = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
 			this.rightController = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
 		}
@@ -168,24 +145,25 @@ namespace AvatarScriptPack
 		// Update is called once per frame
 		void Update()
 		{
-			//foreach (KeyCode kcode in Enum.GetValues(typeof(KeyCode)))
-			//{
-			//	if (Input.GetKeyDown(kcode))
-			//		Console.WriteLine("KeyCode down: " + kcode);
-			//	if (Input.GetKey(kcode))
-			//		Console.WriteLine("KeyCode hold: " + kcode);
-			//	if (Input.GetKeyUp(kcode))
-			//		Console.WriteLine("KeyCode up: " + kcode);
-			//}
-			KeyCode triggerButton = (checkIndex)
-										   ? (KeyCode)IndexTriggerButton
-										   : (checkVive)
-										   ? (KeyCode)ViveTriggerButton
-										   : (checkOculus)
-										   ? (KeyCode)OculusTriggerButton
-										   : (checkWMR)
-										   ? (KeyCode)WMRTriggerButton
-										   : KeyCode.None;
+			KeyCode triggerButton = KeyCode.None;
+			switch (CustomKeyEventsController.Model)
+			{
+				case CustomKeyEventsController.DeviceModel.Index:
+					triggerButton = (KeyCode)IndexTriggerButton;
+					break;
+				case CustomKeyEventsController.DeviceModel.Vive:
+					triggerButton = (KeyCode)ViveTriggerButton;
+					break;
+				case CustomKeyEventsController.DeviceModel.Oculus:
+					triggerButton = (KeyCode)OculusTriggerButton;
+					break;
+				case CustomKeyEventsController.DeviceModel.WMR:
+					triggerButton = (KeyCode)WMRTriggerButton;
+					break;
+				default:
+					break;
+			}
+
 			if (triggerButton == KeyCode.None)
 				return;
 
@@ -265,10 +243,10 @@ namespace AvatarScriptPack
 				{
 					if (Time.time - invalidDetectedTime <= 1.0f)
 					{
-						// 何もしない
+						// Do nothing
 						return true;
 					}
-					// 取得しなおす
+					// Try to get device
 					this.rightController = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
 				}
 				if (!this.rightController.isValid)
@@ -278,10 +256,10 @@ namespace AvatarScriptPack
 						invalidDetected = true;
 						invalidDetectedTime = Time.time;
 						CustomKeyEvents.Logger.log.Warn($"Cannot get right controller.");
-						// 何もしない
+						// Do nothing
 						return true;
 					}
-					// 何もしない
+					// Do nothing
 					return true;
 				}
 				else
@@ -307,10 +285,10 @@ namespace AvatarScriptPack
 				{
 					if (Time.time - invalidDetectedTime <= 1.0f)
 					{
-						// 何もしない
+						// Do nothing
 						return true;
 					}
-					// 取得しなおす
+					// Try to get device
 					this.leftController = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
 				}
 				if (!this.leftController.isValid)
@@ -320,10 +298,10 @@ namespace AvatarScriptPack
 						invalidDetected = true;
 						invalidDetectedTime = Time.time;
 						CustomKeyEvents.Logger.log.Warn($"Cannot get left controller.");
-						// 何もしない
+						// Do nothing
 						return true;
 					}
-					// 何もしない
+					// Do nothing
 					return true;
 				}
 				else
@@ -397,7 +375,7 @@ namespace AvatarScriptPack
 			return true;
 		}
 
-		void OnClick()
+        void OnClick()
 		{
 			//Debug.Log("OnClick");
 			CustomKeyEvents.Logger.log.Debug("OnClick");
