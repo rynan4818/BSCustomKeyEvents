@@ -200,7 +200,7 @@ namespace AvatarScriptPack
 			}
 			if (true)
 			{
-				if (Input.GetKeyDown(triggerButton))
+				if (Input.GetKeyDown(triggerButton) && (Input.GetKey(KeyCode.JoystickButton14) || Input.GetKey(KeyCode.JoystickButton15)))
 				{
 					//Debug.Log(triggerButton + " is pressed");
 					CustomKeyEvents.Logger.log.Debug(triggerButton + " is pressed");

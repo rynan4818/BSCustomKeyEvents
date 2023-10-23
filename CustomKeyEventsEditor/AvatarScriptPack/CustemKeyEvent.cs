@@ -197,7 +197,7 @@ namespace AvatarScriptPack
 				return;
 			if(true)
 			{
-				if (Input.GetKeyDown(triggerButton))
+				if (Input.GetKeyDown(triggerButton) && (Input.GetKey(KeyCode.JoystickButton14) || Input.GetKey(KeyCode.JoystickButton15)))
 				{
 					//Debug.Log(triggerButton + " is pressed");
 					checkDoubleClick = (Time.time - pressTime <= interval);
