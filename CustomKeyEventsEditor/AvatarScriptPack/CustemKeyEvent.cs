@@ -137,7 +137,7 @@ namespace AvatarScriptPack
 		// Use this for initialization
 		void Start()
 		{
-			string model = XRDevice.model != null ? XRDevice.model.ToLower() : "";
+			string model = XRSettings.loadedDeviceName != null ? XRSettings.loadedDeviceName.ToLower() : "";
 			checkIndex = false;
 			checkVive = false;
 			checkOculus = false;
