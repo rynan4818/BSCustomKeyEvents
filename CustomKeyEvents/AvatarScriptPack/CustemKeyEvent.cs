@@ -46,6 +46,8 @@ namespace AvatarScriptPack
 			RightTrigger = KeyCode.JoystickButton15,
 			LeftTrackpadTouch = KeyCode.JoystickButton16,
 			RightTrackpadTouch = KeyCode.JoystickButton17,
+			LeftGrip = KeyCode.JoystickButton4,
+			RightGrip = KeyCode.JoystickButton5,
 			Space = KeyCode.Space,
 			None = KeyCode.None
 		}
@@ -97,6 +99,21 @@ namespace AvatarScriptPack
 		[Tooltip("Button to trigger the events.")]
 		public WMRButton WMRTriggerButton = WMRButton.None;
 
+		[Tooltip("Enable chord press. Trigger button becomes active only while the chord button is also held.")]
+		public bool EnableChordPress = false;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public IndexButton IndexChordButton = IndexButton.None;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public ViveButton ViveChordButton = ViveButton.None;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public OculusButton OculusChordButton = OculusButton.None;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public WMRButton WMRChordButton = WMRButton.None;
+
 		[Space(20)]
 
 		[Tooltip("Called when the click event is triggered.")]
@@ -137,6 +154,8 @@ namespace AvatarScriptPack
 		private InputDevice leftController;
 		private InputDevice rightController;
 		private KeyCode previousTriggerButton = KeyCode.None;
+		private KeyCode previousChordButton = KeyCode.None;
+		private bool previousChordEnabled = false;
 		private readonly HashSet<KeyCode> legacyFallbackLoggedButtons = new HashSet<KeyCode>();
 		private readonly HashSet<string> debugOnceLogKeys = new HashSet<string>();
 		private string lastInputReadRoute = "none";
@@ -158,16 +177,23 @@ namespace AvatarScriptPack
 				return;
 			}
 
-			if (previousTriggerButton != triggerButton)
+			KeyCode chordButton = ResolveChordButton();
+			bool chordEnabled = EnableChordPress && chordButton != KeyCode.None;
+
+			if (previousTriggerButton != triggerButton || previousChordButton != chordButton || previousChordEnabled != chordEnabled)
 			{
 				triggerPressed = false;
 				checkLongClick = false;
 				longClicked = false;
 				previousTriggerButton = triggerButton;
+				previousChordButton = chordButton;
+				previousChordEnabled = chordEnabled;
 			}
 
-			bool pressedNow = GetButtonPressState(triggerButton);
-			DebugOnlyLogPoll(triggerButton, pressedNow);
+			bool primaryPressed = GetButtonPressState(triggerButton);
+			bool chordPressed = !chordEnabled || GetButtonPressState(chordButton);
+			bool pressedNow = primaryPressed && chordPressed;
+			DebugOnlyLogPoll(triggerButton, chordButton, pressedNow, primaryPressed, chordPressed, chordEnabled);
 
 			if (pressedNow && !triggerPressed)
 			{
@@ -223,6 +249,41 @@ namespace AvatarScriptPack
 				checkClick = false;
 				OnClick();
 			}
+		}
+
+		private KeyCode ResolveChordButton()
+		{
+			switch (CustomKeyEventsController.Model)
+			{
+				case CustomKeyEventsController.DeviceModel.Index:
+					return (KeyCode)IndexChordButton;
+				case CustomKeyEventsController.DeviceModel.Vive:
+					return (KeyCode)ViveChordButton;
+				case CustomKeyEventsController.DeviceModel.Oculus:
+					return (KeyCode)OculusChordButton;
+				case CustomKeyEventsController.DeviceModel.WMR:
+					return (KeyCode)WMRChordButton;
+			}
+
+			// Keep old avatars working even when model detection fails.
+			if (ViveChordButton != ViveButton.None)
+			{
+				return (KeyCode)ViveChordButton;
+			}
+			if (IndexChordButton != IndexButton.None)
+			{
+				return (KeyCode)IndexChordButton;
+			}
+			if (OculusChordButton != OculusButton.None)
+			{
+				return (KeyCode)OculusChordButton;
+			}
+			if (WMRChordButton != WMRButton.None)
+			{
+				return (KeyCode)WMRChordButton;
+			}
+
+			return KeyCode.None;
 		}
 
 		private KeyCode ResolveTriggerButton()
@@ -496,7 +557,7 @@ namespace AvatarScriptPack
 		}
 
 		[Conditional("DEBUG")]
-		private void DebugOnlyLogPoll(KeyCode triggerButton, bool pressedNow)
+		private void DebugOnlyLogPoll(KeyCode triggerButton, KeyCode chordButton, bool pressedNow, bool primaryPressed, bool chordPressed, bool chordEnabled)
 		{
 			if (Time.time < nextDiagnosticsLogTime)
 			{
@@ -504,7 +565,7 @@ namespace AvatarScriptPack
 			}
 			nextDiagnosticsLogTime = Time.time + diagnosticsPollInterval;
 			CustomKeyEvents.Logger.log.Debug(
-				$"[diag] poll button={triggerButton} model={CustomKeyEventsController.Model} pressedNow={pressedNow} triggerPressed={triggerPressed} route={lastInputReadRoute} routePressed={lastInputReadPressed} detail={lastInputReadDetail}");
+				$"[diag] poll button={triggerButton} chord={chordButton} chordEnabled={chordEnabled} pressedNow={pressedNow} primaryPressed={primaryPressed} chordPressed={chordPressed} model={CustomKeyEventsController.Model} triggerPressed={triggerPressed} route={lastInputReadRoute} routePressed={lastInputReadPressed} detail={lastInputReadDetail}");
 		}
 
 		[Conditional("DEBUG")]

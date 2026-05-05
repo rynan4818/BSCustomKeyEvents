@@ -44,6 +44,8 @@ namespace AvatarScriptPack
 			RightTrigger = KeyCode.JoystickButton15,
 			LeftTrackpadTouch = KeyCode.JoystickButton16,
 			RightTrackpadTouch = KeyCode.JoystickButton17,
+			LeftGrip = KeyCode.JoystickButton4,
+			RightGrip = KeyCode.JoystickButton5,
 			Space = KeyCode.Space,
 			None = KeyCode.None
 		}
@@ -98,6 +100,21 @@ namespace AvatarScriptPack
 		[Tooltip("Button to trigger the events.")]
 		public WMRButton WMRTriggerButton = WMRButton.None;
 
+		[Tooltip("Enable chord press. Trigger button becomes active only while the chord button is also held.")]
+		public bool EnableChordPress = false;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public IndexButton IndexChordButton = IndexButton.None;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public ViveButton ViveChordButton = ViveButton.None;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public OculusButton OculusChordButton = OculusButton.None;
+
+		[Tooltip("Additional button required together with trigger button.")]
+		public WMRButton WMRChordButton = WMRButton.None;
+
 		[Space(20)]
 
 		[Tooltip("Called when the click event is triggered.")]
@@ -132,6 +149,9 @@ namespace AvatarScriptPack
 		protected bool longClicked = false;
 		
 		protected bool triggerPressed = false;
+		private KeyCode previousTriggerButton = KeyCode.None;
+		private KeyCode previousChordButton = KeyCode.None;
+		private bool previousChordEnabled = false;
 
 
 		// Use this for initialization
@@ -191,58 +211,80 @@ namespace AvatarScriptPack
 										   : (checkWMR)
 										   ? (KeyCode)WMRTriggerButton
 										   : KeyCode.None;
+
+			KeyCode chordButton = (checkIndex)
+										 ? (KeyCode)IndexChordButton
+										 : (checkVive)
+										 ? (KeyCode)ViveChordButton
+										 : (checkOculus)
+										 ? (KeyCode)OculusChordButton
+										 : (checkWMR)
+										 ? (KeyCode)WMRChordButton
+										 : KeyCode.None;
+
 			if (triggerButton == KeyCode.None)
 				return;
-			if(true)
+
+			bool chordEnabled = EnableChordPress && chordButton != KeyCode.None;
+			if (previousTriggerButton != triggerButton || previousChordButton != chordButton || previousChordEnabled != chordEnabled)
 			{
-				if (Input.GetKeyDown(triggerButton))
+				triggerPressed = false;
+				checkLongClick = false;
+				longClicked = false;
+				previousTriggerButton = triggerButton;
+				previousChordButton = chordButton;
+				previousChordEnabled = chordEnabled;
+			}
+
+			bool pressedNow = Input.GetKey(triggerButton) && (!chordEnabled || Input.GetKey(chordButton));
+			if (pressedNow && !triggerPressed)
+			{
+				//Debug.Log(triggerButton + " is pressed");
+				checkDoubleClick = (Time.time - pressTime <= interval);
+				pressTime = Time.time;
+				OnPress();
+				checkLongClick = true;
+				checkClick = false;
+			}
+			if (pressedNow)
+			{
+				//Debug.Log(triggerButton + " is hold");
+				OnHold();
+				if (checkLongClick && Time.time - pressTime >= longClickInterval)
 				{
-					//Debug.Log(triggerButton + " is pressed");
-					checkDoubleClick = (Time.time - pressTime <= interval);
-					pressTime = Time.time;
-					OnPress();
-					checkLongClick = true;
-					checkClick = false;
+					checkLongClick = false;
+					OnLongClick();
+					longClicked = true;
 				}
-				if (Input.GetKey(triggerButton))
+			}
+			if (!pressedNow && triggerPressed)
+			{
+				//Debug.Log(triggerButton + " is up");
+				releaseTime = Time.time;
+				OnRelease();
+				if (longClicked)
 				{
-					//Debug.Log(triggerButton + " is hold");
-					OnHold();
-					if (checkLongClick && Time.time - pressTime >= longClickInterval)
+					OnReleaseAfterLongClick();
+					longClicked = false;
+				}
+				//Debug.Log("GetKeyUp : releaseTime - pressTime = " + (releaseTime - pressTime));
+				if (releaseTime - pressTime <= interval)
+				{
+					if (checkDoubleClick)
 					{
-						checkLongClick = false;
-						OnLongClick();
-						longClicked = true;
+						OnDoubleClick();
+					}
+					else
+					{
+						checkClick = true;
 					}
 				}
-				if (Input.GetKeyUp(triggerButton))
-				{
-					//Debug.Log(triggerButton + " is up");
-					releaseTime = Time.time;
-					OnRelease();
-					if (longClicked)
-					{
-						OnReleaseAfterLongClick();
-						longClicked = false;
-					}
-					//Debug.Log("GetKeyUp : releaseTime - pressTime = " + (releaseTime - pressTime));
-					if (releaseTime - pressTime <= interval)
-					{
-						if (checkDoubleClick)
-						{
-							OnDoubleClick();
-						}
-						else
-						{
-							checkClick = true;
-						}
-					}
-				}
-				if (checkClick && Time.time - releaseTime > interval)
-				{
-					checkClick = false;
-					OnClick();
-				}
+			}
+			triggerPressed = pressedNow;
+			if (checkClick && Time.time - releaseTime > interval)
+			{
+				checkClick = false;
+				OnClick();
 			}
 			
 
