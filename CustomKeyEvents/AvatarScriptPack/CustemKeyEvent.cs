@@ -198,7 +198,6 @@ namespace AvatarScriptPack
 			if (pressedNow && !triggerPressed)
 			{
 				DebugOnlyLogStateChange(triggerButton, true, pressedNow);
-				CustomKeyEvents.Logger.log.Debug(triggerButton + " is pressed");
 				checkDoubleClick = (Time.time - pressTime <= interval);
 				pressTime = Time.time;
 				OnPress();
@@ -211,7 +210,7 @@ namespace AvatarScriptPack
 				OnHold();
 				if (checkLongClick && Time.time - pressTime >= longClickInterval)
 				{
-					CustomKeyEvents.Logger.log.Debug(triggerButton + " is longClicked");
+					DebugOnlyLog(triggerButton + " is longClicked");
 					checkLongClick = false;
 					OnLongClick();
 					longClicked = true;
@@ -221,7 +220,6 @@ namespace AvatarScriptPack
 			if (!pressedNow && triggerPressed)
 			{
 				DebugOnlyLogStateChange(triggerButton, false, pressedNow);
-				CustomKeyEvents.Logger.log.Debug(triggerButton + " is up");
 				releaseTime = Time.time;
 				OnRelease();
 				if (longClicked)
@@ -331,7 +329,7 @@ namespace AvatarScriptPack
 
 			if (legacyFallbackLoggedButtons.Add(triggerButton))
 			{
-				CustomKeyEvents.Logger.log.Warn($"Cannot map {triggerButton} to OpenXR usage. Fallback to Input.GetKey().");
+				DebugOnlyLog($"Cannot map {triggerButton} to OpenXR usage. Fallback to Input.GetKey().");
 			}
 			bool legacyPressed = Input.GetKey(triggerButton);
 			DebugOnlySetInputTrace("legacy_getkey", $"button={triggerButton}", legacyPressed);
@@ -445,17 +443,17 @@ namespace AvatarScriptPack
 			pressed = false;
 			if (!TryGetController(node, out InputDevice controller))
 			{
-				DebugOnlyLogOnce($"axis_controller_missing_{node}_{usage.name}", $"[diag] Controller unavailable while reading axis {usage.name} on {node}");
+				LogOnce($"axis_controller_missing_{node}_{usage.name}", $"Controller unavailable while reading axis {usage.name} on {node}");
 				return false;
 			}
-			DebugOnlyClearLogOnce($"axis_controller_missing_{node}_{usage.name}");
+			ClearLogOnce($"axis_controller_missing_{node}_{usage.name}");
 
 			if (!controller.TryGetFeatureValue(usage, out float axisValue))
 			{
-				DebugOnlyLogOnce($"axis_missing_{node}_{usage.name}", $"[diag] Axis feature {usage.name} not available on {node}");
+				LogOnce($"axis_missing_{node}_{usage.name}", $"Axis feature {usage.name} not available on {node}");
 				return false;
 			}
-			DebugOnlyClearLogOnce($"axis_missing_{node}_{usage.name}");
+			ClearLogOnce($"axis_missing_{node}_{usage.name}");
 
 			float threshold = triggerPressed ? analogReleaseThreshold : analogPressThreshold;
 			pressed = axisValue >= threshold;
@@ -467,21 +465,21 @@ namespace AvatarScriptPack
 			pressed = false;
 			if (!TryGetController(node, out InputDevice controller))
 			{
-				DebugOnlyLogOnce($"bool_controller_missing_{node}", $"[diag] Controller unavailable while reading bool feature on {node}");
+				LogOnce($"bool_controller_missing_{node}", $"Controller unavailable while reading bool feature on {node}");
 				return false;
 			}
-			DebugOnlyClearLogOnce($"bool_controller_missing_{node}");
+			ClearLogOnce($"bool_controller_missing_{node}");
 
 			for (int i = 0; i < usages.Length; i++)
 			{
 				if (controller.TryGetFeatureValue(usages[i], out bool value))
 				{
 					pressed = value;
-					DebugOnlyClearLogOnce($"bool_missing_{node}_{BuildUsageList(usages)}");
+					ClearLogOnce($"bool_missing_{node}_{BuildUsageList(usages)}");
 					return true;
 				}
 			}
-			DebugOnlyLogOnce($"bool_missing_{node}_{BuildUsageList(usages)}", $"[diag] No bool feature available on {node}. tried={BuildUsageList(usages)}");
+			LogOnce($"bool_missing_{node}_{BuildUsageList(usages)}", $"No bool feature available on {node}. tried={BuildUsageList(usages)}");
 			return false;
 		}
 
@@ -490,7 +488,7 @@ namespace AvatarScriptPack
 			controller = (node == XRNode.LeftHand) ? leftController : rightController;
 			if (!controller.isValid)
 			{
-				DebugOnlyLogOnce($"controller_invalid_initial_{node}", $"[diag] Cached controller invalid for {node}. Attempting reacquire.");
+				LogOnce($"controller_invalid_initial_{node}", $"Cached controller invalid for {node}. Attempting reacquire.");
 				controller = InputDevices.GetDeviceAtXRNode(node);
 				if (node == XRNode.LeftHand)
 				{
@@ -500,15 +498,15 @@ namespace AvatarScriptPack
 				{
 					rightController = controller;
 				}
-				DebugOnlyLog($"[diag] Reacquire {node}: valid={controller.isValid} name='{controller.name}' characteristics={controller.characteristics}");
+				Log($"Reacquire {node}: valid={controller.isValid} name='{controller.name}' characteristics={controller.characteristics}");
 			}
 			if (controller.isValid)
 			{
-				DebugOnlyClearLogOnce($"controller_invalid_initial_{node}");
+				ClearLogOnce($"controller_invalid_initial_{node}");
 			}
 			else
 			{
-				DebugOnlyLogOnce($"controller_still_invalid_{node}", $"[diag] Controller still invalid for {node} after reacquire.");
+				LogOnce($"controller_still_invalid_{node}", $"Controller still invalid for {node} after reacquire.");
 			}
 			return controller.isValid;
 		}
@@ -540,6 +538,24 @@ namespace AvatarScriptPack
 			{
 				CustomKeyEvents.Logger.log.Debug(message);
 			}
+		}
+
+		private void Log(string message)
+		{
+			CustomKeyEvents.Logger.log.Warn(message);
+		}
+
+		private void LogOnce(string key, string message)
+		{
+			if (debugOnceLogKeys.Add(key))
+			{
+				CustomKeyEvents.Logger.log.Warn(message);
+			}
+		}
+
+		private void ClearLogOnce(string key)
+		{
+			debugOnceLogKeys.Remove(key);
 		}
 
 		[Conditional("DEBUG")]
@@ -577,50 +593,43 @@ namespace AvatarScriptPack
 
 		void OnClick()
 		{
-			//Debug.Log("OnClick");
-			CustomKeyEvents.Logger.log.Debug("OnClick");
+			DebugOnlyLog("OnClick");
 			clickEvents.Invoke();
 		}
 
 		void OnDoubleClick()
 		{
-			//Debug.Log("OnDoubleClick");
-			CustomKeyEvents.Logger.log.Debug("OnDoubleClick");
+			DebugOnlyLog("OnDoubleClick");
 			doubleClickEvents.Invoke();
 		}
 
 		void OnLongClick()
 		{
-			//Debug.Log("OnLongClick");
-			CustomKeyEvents.Logger.log.Debug("OnLongClick");
+			DebugOnlyLog("OnLongClick");
 			longClickEvents.Invoke();
 		}
 
 		void OnPress()
 		{
-			//Debug.Log("OnPress");
-			CustomKeyEvents.Logger.log.Debug("OnPress");
+			DebugOnlyLog("OnPress");
 			pressEvents.Invoke();
 		}
 
 		void OnHold()
 		{
-			//Debug.Log("OnHold");
-			//CustomKeyEvents.Logger.log.Debug("OnHold");
+			DebugOnlyLog("OnHold");
 			holdEvents.Invoke();
 		}
 
 		void OnRelease()
 		{
-			//Debug.Log("OnRelease");
-			CustomKeyEvents.Logger.log.Debug("OnRelease");
+			DebugOnlyLog("OnRelease");
 			releaseEvents.Invoke();
 		}
 
 		void OnReleaseAfterLongClick()
 		{
-			//Debug.Log("OnRelease");
-			CustomKeyEvents.Logger.log.Debug("OnReleaseAfterLongClick");
+			DebugOnlyLog("OnReleaseAfterLongClick");
 			releaseAfterLongClickEvents.Invoke();
 		}
 	}
