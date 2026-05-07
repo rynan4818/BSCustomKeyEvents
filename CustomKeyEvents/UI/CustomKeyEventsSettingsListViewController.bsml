@@ -29,70 +29,70 @@
           <text text="Trigger Buttons" font-size="3.8" color="#66CCFF" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="index-trigger-button-dropdown" text="Index Trigger Button" value="indexTriggerButton" options="indexTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="index-trigger-button-dropdown" text="Index Trigger Button" value="indexTriggerButton" options="indexTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="vive-trigger-button-dropdown" text="Vive Trigger Button" value="viveTriggerButton" options="viveTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="vive-trigger-button-dropdown" text="Vive Trigger Button" value="viveTriggerButton" options="viveTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="oculus-trigger-button-dropdown" text="Oculus Trigger Button" value="oculusTriggerButton" options="oculusTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="oculus-trigger-button-dropdown" text="Oculus Trigger Button" value="oculusTriggerButton" options="oculusTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="wmr-trigger-button-dropdown" text="WMR Trigger Button" value="wmrTriggerButton" options="wmrTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="wmr-trigger-button-dropdown" text="WMR Trigger Button" value="wmrTriggerButton" options="wmrTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
 
         <horizontal pref-width="100" pad-top="2">
           <text text="Chord Buttons" font-size="3.8" color="#66CCFF" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <toggle-setting id="enable-chord-press-toggle" text="Enable Chord Press" value="enableChordPress" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <toggle-setting id="enable-chord-press-toggle" text="Enable Chord Press" value="enableChordPress" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="index-chord-button-dropdown" text="Index Chord Button" value="indexChordButton" options="indexChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="index-chord-button-dropdown" text="Index Chord Button" value="indexChordButton" options="indexChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="vive-chord-button-dropdown" text="Vive Chord Button" value="viveChordButton" options="viveChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="vive-chord-button-dropdown" text="Vive Chord Button" value="viveChordButton" options="viveChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="oculus-chord-button-dropdown" text="Oculus Chord Button" value="oculusChordButton" options="oculusChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="oculus-chord-button-dropdown" text="Oculus Chord Button" value="oculusChordButton" options="oculusChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="wmr-chord-button-dropdown" text="WMR Chord Button" value="wmrChordButton" options="wmrChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="wmr-chord-button-dropdown" text="WMR Chord Button" value="wmrChordButton" options="wmrChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
 
         <horizontal pref-width="100" pad-top="2" active="~hasAnyRoutableEvents">
           <text text="Events Change" font-size="3.8" color="#66CCFF" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100" active="~hasClickEvents">
-          <dropdown-list-setting id="click-events-change-dropdown" text="Click Events Change" value="clickEventsChange" options="clickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="click-events-change-dropdown" text="Click Events Change" value="clickEventsChange" options="clickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100" active="~hasDoubleClickEvents">
-          <dropdown-list-setting id="double-click-events-change-dropdown" text="Double Click Events Change" value="doubleClickEventsChange" options="doubleClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="double-click-events-change-dropdown" text="Double Click Events Change" value="doubleClickEventsChange" options="doubleClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100" active="~hasLongClickEvents">
-          <dropdown-list-setting id="long-click-events-change-dropdown" text="Long Click Events Change" value="longClickEventsChange" options="longClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="long-click-events-change-dropdown" text="Long Click Events Change" value="longClickEventsChange" options="longClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100" active="~hasPressEvents">
-          <dropdown-list-setting id="press-events-change-dropdown" text="Press Events Change" value="pressEventsChange" options="pressEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="press-events-change-dropdown" text="Press Events Change" value="pressEventsChange" options="pressEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100" active="~hasHoldEvents">
-          <dropdown-list-setting id="hold-events-change-dropdown" text="Hold Events Change" value="holdEventsChange" options="holdEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="hold-events-change-dropdown" text="Hold Events Change" value="holdEventsChange" options="holdEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100" active="~hasReleaseEvents">
-          <dropdown-list-setting id="release-events-change-dropdown" text="Release Events Change" value="releaseEventsChange" options="releaseEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="release-events-change-dropdown" text="Release Events Change" value="releaseEventsChange" options="releaseEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
         <horizontal pref-width="100" active="~hasReleaseAfterLongClickEvents">
-          <dropdown-list-setting id="release-after-long-click-events-change-dropdown" text="Release After Long Click Events Change" value="releaseAfterLongClickEventsChange" options="releaseAfterLongClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+          <dropdown-list-setting id="release-after-long-click-events-change-dropdown" text="Release After Long Click Events Change" value="releaseAfterLongClickEventsChange" options="releaseAfterLongClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedTarget" />
         </horizontal>
 
         <horizontal pref-width="100" pad-top="2">
           <text text="Click Timing" font-size="3.8" color="#66CCFF" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <increment-setting id="double-click-interval-setting" text="Double Click Interval (s)" value="doubleClickInterval" min="0.05" max="3.0" increment="0.05" apply-on-change="true" interactable="~hasSelectedComponent" preferred-width="95" />
+          <increment-setting id="double-click-interval-setting" text="Double Click Interval (s)" value="doubleClickInterval" min="0.05" max="3.0" increment="0.05" apply-on-change="true" interactable="~hasSelectedTarget" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <increment-setting id="long-click-interval-setting" text="Long Click Interval (s)" value="longClickInterval" min="0.05" max="5.0" increment="0.05" apply-on-change="true" interactable="~hasSelectedComponent" preferred-width="95" />
+          <increment-setting id="long-click-interval-setting" text="Long Click Interval (s)" value="longClickInterval" min="0.05" max="5.0" increment="0.05" apply-on-change="true" interactable="~hasSelectedTarget" preferred-width="95" />
         </horizontal>
       </vertical>
     </horizontal>

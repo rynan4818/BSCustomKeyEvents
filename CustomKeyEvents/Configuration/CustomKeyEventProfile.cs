@@ -24,6 +24,13 @@ namespace CustomKeyEvents.Configuration
         public virtual CustomKeyEvent.EventRouteTarget HoldEventsChange { get; set; } = CustomKeyEvent.EventRouteTarget.NoChange;
         public virtual CustomKeyEvent.EventRouteTarget ReleaseEventsChange { get; set; } = CustomKeyEvent.EventRouteTarget.NoChange;
         public virtual CustomKeyEvent.EventRouteTarget ReleaseAfterLongClickEventsChange { get; set; } = CustomKeyEvent.EventRouteTarget.NoChange;
+        public virtual bool HasClickEvents { get; set; }
+        public virtual bool HasDoubleClickEvents { get; set; }
+        public virtual bool HasLongClickEvents { get; set; }
+        public virtual bool HasPressEvents { get; set; }
+        public virtual bool HasHoldEvents { get; set; }
+        public virtual bool HasReleaseEvents { get; set; }
+        public virtual bool HasReleaseAfterLongClickEvents { get; set; }
         public virtual float DoubleClickInterval { get; set; } = 0.5f;
         public virtual float LongClickInterval { get; set; } = 0.6f;
     }

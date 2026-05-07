@@ -430,6 +430,13 @@ namespace AvatarScriptPack
 				HoldEventsChange = HoldEventsChange,
 				ReleaseEventsChange = ReleaseEventsChange,
 				ReleaseAfterLongClickEventsChange = ReleaseAfterLongClickEventsChange,
+				HasClickEvents = HasPersistentEvent(ButtonEventType.Click),
+				HasDoubleClickEvents = HasPersistentEvent(ButtonEventType.DoubleClick),
+				HasLongClickEvents = HasPersistentEvent(ButtonEventType.LongClick),
+				HasPressEvents = HasPersistentEvent(ButtonEventType.Press),
+				HasHoldEvents = HasPersistentEvent(ButtonEventType.Hold),
+				HasReleaseEvents = HasPersistentEvent(ButtonEventType.Release),
+				HasReleaseAfterLongClickEvents = HasPersistentEvent(ButtonEventType.ReleaseAfterLongClick),
 				DoubleClickInterval = GetEffectiveDoubleClickInterval(),
 				LongClickInterval = GetEffectiveLongClickInterval()
 			};

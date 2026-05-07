@@ -141,11 +141,16 @@ namespace CustomKeyEvents.UI
 			: $"#{selectedComponentOption.ComponentOrdinal}";
 
 		[UIValue("selectedComponentSummary")]
-		public string SelectedComponentSummary => selectedComponentOption?.DefaultSummary
-			?? "No CustomKeyEvent components are currently loaded.";
+		public string SelectedComponentSummary => GetSelectedComponent()?.GetDefaultSettingsSummary()
+			?? BuildStoredProfileSummary(GetSelectedProfile())
+			?? selectedComponentOption?.DefaultSummary
+			?? "No CustomKeyEvent targets are currently discovered.";
 
 		[UIValue("hasSelectedComponent")]
 		public bool HasSelectedComponent => GetSelectedComponent() != null;
+
+		[UIValue("hasSelectedTarget")]
+		public bool HasSelectedTarget => HasSelectedComponent || GetSelectedProfile() != null;
 
 		[UIValue("hasClickEvents")]
 		public bool HasClickEvents => HasPersistentEvent(CustomKeyEvent.ButtonEventType.Click);
@@ -219,306 +224,521 @@ namespace CustomKeyEvents.UI
 		[UIValue("indexTriggerButton")]
 		public object IndexTriggerButton
 		{
-			get => GetSelectedComponent()?.IndexTriggerButton ?? CustomKeyEvent.IndexButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.IndexTriggerButton);
-				if (EqualityComparer<CustomKeyEvent.IndexButton>.Default.Equals(component.IndexTriggerButton, selected))
+			get => GetSelectedValue(component => component.IndexTriggerButton, profile => profile.IndexTriggerButton, CustomKeyEvent.IndexButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.IndexTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.IndexButton>.Default.Equals(component.IndexTriggerButton, selected))
+					{
+						return false;
+					}
 
-				component.IndexTriggerButton = selected;
-				return true;
-			});
+					component.IndexTriggerButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.IndexTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.IndexButton>.Default.Equals(profile.IndexTriggerButton, selected))
+					{
+						return false;
+					}
+
+					profile.IndexTriggerButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("viveTriggerButton")]
 		public object ViveTriggerButton
 		{
-			get => GetSelectedComponent()?.ViveTriggerButton ?? CustomKeyEvent.ViveButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.ViveTriggerButton);
-				if (EqualityComparer<CustomKeyEvent.ViveButton>.Default.Equals(component.ViveTriggerButton, selected))
+			get => GetSelectedValue(component => component.ViveTriggerButton, profile => profile.ViveTriggerButton, CustomKeyEvent.ViveButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.ViveTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.ViveButton>.Default.Equals(component.ViveTriggerButton, selected))
+					{
+						return false;
+					}
 
-				component.ViveTriggerButton = selected;
-				return true;
-			});
+					component.ViveTriggerButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.ViveTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.ViveButton>.Default.Equals(profile.ViveTriggerButton, selected))
+					{
+						return false;
+					}
+
+					profile.ViveTriggerButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("oculusTriggerButton")]
 		public object OculusTriggerButton
 		{
-			get => GetSelectedComponent()?.OculusTriggerButton ?? CustomKeyEvent.OculusButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.OculusTriggerButton);
-				if (EqualityComparer<CustomKeyEvent.OculusButton>.Default.Equals(component.OculusTriggerButton, selected))
+			get => GetSelectedValue(component => component.OculusTriggerButton, profile => profile.OculusTriggerButton, CustomKeyEvent.OculusButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.OculusTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.OculusButton>.Default.Equals(component.OculusTriggerButton, selected))
+					{
+						return false;
+					}
 
-				component.OculusTriggerButton = selected;
-				return true;
-			});
+					component.OculusTriggerButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.OculusTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.OculusButton>.Default.Equals(profile.OculusTriggerButton, selected))
+					{
+						return false;
+					}
+
+					profile.OculusTriggerButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("wmrTriggerButton")]
 		public object WmrTriggerButton
 		{
-			get => GetSelectedComponent()?.WMRTriggerButton ?? CustomKeyEvent.WMRButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.WMRTriggerButton);
-				if (EqualityComparer<CustomKeyEvent.WMRButton>.Default.Equals(component.WMRTriggerButton, selected))
+			get => GetSelectedValue(component => component.WMRTriggerButton, profile => profile.WMRTriggerButton, CustomKeyEvent.WMRButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.WMRTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.WMRButton>.Default.Equals(component.WMRTriggerButton, selected))
+					{
+						return false;
+					}
 
-				component.WMRTriggerButton = selected;
-				return true;
-			});
+					component.WMRTriggerButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.WMRTriggerButton);
+					if (EqualityComparer<CustomKeyEvent.WMRButton>.Default.Equals(profile.WMRTriggerButton, selected))
+					{
+						return false;
+					}
+
+					profile.WMRTriggerButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("enableChordPress")]
 		public bool EnableChordPress
 		{
-			get => GetSelectedComponent()?.EnableChordPress ?? false;
-			set => ApplySelectedComponentChange(component =>
-			{
-				if (component.EnableChordPress == value)
+			get => GetSelectedValue(component => component.EnableChordPress, profile => profile.EnableChordPress, false);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					if (component.EnableChordPress == value)
+					{
+						return false;
+					}
 
-				component.EnableChordPress = value;
-				return true;
-			});
+					component.EnableChordPress = value;
+					return true;
+				},
+				profile =>
+				{
+					if (profile.EnableChordPress == value)
+					{
+						return false;
+					}
+
+					profile.EnableChordPress = value;
+					return true;
+				});
 		}
 
 		[UIValue("indexChordButton")]
 		public object IndexChordButton
 		{
-			get => GetSelectedComponent()?.IndexChordButton ?? CustomKeyEvent.IndexButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.IndexChordButton);
-				if (EqualityComparer<CustomKeyEvent.IndexButton>.Default.Equals(component.IndexChordButton, selected))
+			get => GetSelectedValue(component => component.IndexChordButton, profile => profile.IndexChordButton, CustomKeyEvent.IndexButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.IndexChordButton);
+					if (EqualityComparer<CustomKeyEvent.IndexButton>.Default.Equals(component.IndexChordButton, selected))
+					{
+						return false;
+					}
 
-				component.IndexChordButton = selected;
-				return true;
-			});
+					component.IndexChordButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.IndexChordButton);
+					if (EqualityComparer<CustomKeyEvent.IndexButton>.Default.Equals(profile.IndexChordButton, selected))
+					{
+						return false;
+					}
+
+					profile.IndexChordButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("viveChordButton")]
 		public object ViveChordButton
 		{
-			get => GetSelectedComponent()?.ViveChordButton ?? CustomKeyEvent.ViveButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.ViveChordButton);
-				if (EqualityComparer<CustomKeyEvent.ViveButton>.Default.Equals(component.ViveChordButton, selected))
+			get => GetSelectedValue(component => component.ViveChordButton, profile => profile.ViveChordButton, CustomKeyEvent.ViveButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.ViveChordButton);
+					if (EqualityComparer<CustomKeyEvent.ViveButton>.Default.Equals(component.ViveChordButton, selected))
+					{
+						return false;
+					}
 
-				component.ViveChordButton = selected;
-				return true;
-			});
+					component.ViveChordButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.ViveChordButton);
+					if (EqualityComparer<CustomKeyEvent.ViveButton>.Default.Equals(profile.ViveChordButton, selected))
+					{
+						return false;
+					}
+
+					profile.ViveChordButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("oculusChordButton")]
 		public object OculusChordButton
 		{
-			get => GetSelectedComponent()?.OculusChordButton ?? CustomKeyEvent.OculusButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.OculusChordButton);
-				if (EqualityComparer<CustomKeyEvent.OculusButton>.Default.Equals(component.OculusChordButton, selected))
+			get => GetSelectedValue(component => component.OculusChordButton, profile => profile.OculusChordButton, CustomKeyEvent.OculusButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.OculusChordButton);
+					if (EqualityComparer<CustomKeyEvent.OculusButton>.Default.Equals(component.OculusChordButton, selected))
+					{
+						return false;
+					}
 
-				component.OculusChordButton = selected;
-				return true;
-			});
+					component.OculusChordButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.OculusChordButton);
+					if (EqualityComparer<CustomKeyEvent.OculusButton>.Default.Equals(profile.OculusChordButton, selected))
+					{
+						return false;
+					}
+
+					profile.OculusChordButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("wmrChordButton")]
 		public object WmrChordButton
 		{
-			get => GetSelectedComponent()?.WMRChordButton ?? CustomKeyEvent.WMRButton.None;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEnumValue(value, component.WMRChordButton);
-				if (EqualityComparer<CustomKeyEvent.WMRButton>.Default.Equals(component.WMRChordButton, selected))
+			get => GetSelectedValue(component => component.WMRChordButton, profile => profile.WMRChordButton, CustomKeyEvent.WMRButton.None);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEnumValue(value, component.WMRChordButton);
+					if (EqualityComparer<CustomKeyEvent.WMRButton>.Default.Equals(component.WMRChordButton, selected))
+					{
+						return false;
+					}
 
-				component.WMRChordButton = selected;
-				return true;
-			});
+					component.WMRChordButton = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEnumValue(value, profile.WMRChordButton);
+					if (EqualityComparer<CustomKeyEvent.WMRButton>.Default.Equals(profile.WMRChordButton, selected))
+					{
+						return false;
+					}
+
+					profile.WMRChordButton = selected;
+					return true;
+				});
 		}
 
 		[UIValue("clickEventsChange")]
 		public object ClickEventsChange
 		{
-			get => FindEventRouteOption(clickEventsChangeOptions, GetSelectedComponent()?.ClickEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.ClickEventsChange, clickEventsChangeOptions);
-				if (component.ClickEventsChange == selected)
+			get => FindEventRouteOption(clickEventsChangeOptions, GetSelectedValue(component => component.ClickEventsChange, profile => profile.ClickEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.ClickEventsChange, clickEventsChangeOptions);
+					if (component.ClickEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.ClickEventsChange = selected;
-				return true;
-			});
+					component.ClickEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.ClickEventsChange, clickEventsChangeOptions);
+					if (profile.ClickEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.ClickEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("doubleClickEventsChange")]
 		public object DoubleClickEventsChange
 		{
-			get => FindEventRouteOption(doubleClickEventsChangeOptions, GetSelectedComponent()?.DoubleClickEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.DoubleClickEventsChange, doubleClickEventsChangeOptions);
-				if (component.DoubleClickEventsChange == selected)
+			get => FindEventRouteOption(doubleClickEventsChangeOptions, GetSelectedValue(component => component.DoubleClickEventsChange, profile => profile.DoubleClickEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.DoubleClickEventsChange, doubleClickEventsChangeOptions);
+					if (component.DoubleClickEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.DoubleClickEventsChange = selected;
-				return true;
-			});
+					component.DoubleClickEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.DoubleClickEventsChange, doubleClickEventsChangeOptions);
+					if (profile.DoubleClickEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.DoubleClickEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("longClickEventsChange")]
 		public object LongClickEventsChange
 		{
-			get => FindEventRouteOption(longClickEventsChangeOptions, GetSelectedComponent()?.LongClickEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.LongClickEventsChange, longClickEventsChangeOptions);
-				if (component.LongClickEventsChange == selected)
+			get => FindEventRouteOption(longClickEventsChangeOptions, GetSelectedValue(component => component.LongClickEventsChange, profile => profile.LongClickEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.LongClickEventsChange, longClickEventsChangeOptions);
+					if (component.LongClickEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.LongClickEventsChange = selected;
-				return true;
-			});
+					component.LongClickEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.LongClickEventsChange, longClickEventsChangeOptions);
+					if (profile.LongClickEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.LongClickEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("pressEventsChange")]
 		public object PressEventsChange
 		{
-			get => FindEventRouteOption(pressEventsChangeOptions, GetSelectedComponent()?.PressEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.PressEventsChange, pressEventsChangeOptions);
-				if (component.PressEventsChange == selected)
+			get => FindEventRouteOption(pressEventsChangeOptions, GetSelectedValue(component => component.PressEventsChange, profile => profile.PressEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.PressEventsChange, pressEventsChangeOptions);
+					if (component.PressEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.PressEventsChange = selected;
-				return true;
-			});
+					component.PressEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.PressEventsChange, pressEventsChangeOptions);
+					if (profile.PressEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.PressEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("holdEventsChange")]
 		public object HoldEventsChange
 		{
-			get => FindEventRouteOption(holdEventsChangeOptions, GetSelectedComponent()?.HoldEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.HoldEventsChange, holdEventsChangeOptions);
-				if (component.HoldEventsChange == selected)
+			get => FindEventRouteOption(holdEventsChangeOptions, GetSelectedValue(component => component.HoldEventsChange, profile => profile.HoldEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.HoldEventsChange, holdEventsChangeOptions);
+					if (component.HoldEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.HoldEventsChange = selected;
-				return true;
-			});
+					component.HoldEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.HoldEventsChange, holdEventsChangeOptions);
+					if (profile.HoldEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.HoldEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("releaseEventsChange")]
 		public object ReleaseEventsChange
 		{
-			get => FindEventRouteOption(releaseEventsChangeOptions, GetSelectedComponent()?.ReleaseEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.ReleaseEventsChange, releaseEventsChangeOptions);
-				if (component.ReleaseEventsChange == selected)
+			get => FindEventRouteOption(releaseEventsChangeOptions, GetSelectedValue(component => component.ReleaseEventsChange, profile => profile.ReleaseEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.ReleaseEventsChange, releaseEventsChangeOptions);
+					if (component.ReleaseEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.ReleaseEventsChange = selected;
-				return true;
-			});
+					component.ReleaseEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.ReleaseEventsChange, releaseEventsChangeOptions);
+					if (profile.ReleaseEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.ReleaseEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("releaseAfterLongClickEventsChange")]
 		public object ReleaseAfterLongClickEventsChange
 		{
-			get => FindEventRouteOption(releaseAfterLongClickEventsChangeOptions, GetSelectedComponent()?.ReleaseAfterLongClickEventsChange ?? CustomKeyEvent.EventRouteTarget.NoChange);
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveEventRouteValue(value, component.ReleaseAfterLongClickEventsChange, releaseAfterLongClickEventsChangeOptions);
-				if (component.ReleaseAfterLongClickEventsChange == selected)
+			get => FindEventRouteOption(releaseAfterLongClickEventsChangeOptions, GetSelectedValue(component => component.ReleaseAfterLongClickEventsChange, profile => profile.ReleaseAfterLongClickEventsChange, CustomKeyEvent.EventRouteTarget.NoChange));
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveEventRouteValue(value, component.ReleaseAfterLongClickEventsChange, releaseAfterLongClickEventsChangeOptions);
+					if (component.ReleaseAfterLongClickEventsChange == selected)
+					{
+						return false;
+					}
 
-				component.ReleaseAfterLongClickEventsChange = selected;
-				return true;
-			});
+					component.ReleaseAfterLongClickEventsChange = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveEventRouteValue(value, profile.ReleaseAfterLongClickEventsChange, releaseAfterLongClickEventsChangeOptions);
+					if (profile.ReleaseAfterLongClickEventsChange == selected)
+					{
+						return false;
+					}
+
+					profile.ReleaseAfterLongClickEventsChange = selected;
+					return true;
+				});
 		}
 
 		[UIValue("doubleClickInterval")]
 		public float DoubleClickInterval
 		{
-			get => GetSelectedComponent()?.DoubleClickInterval ?? 0.5f;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveFloatValue(value, component.DoubleClickInterval);
-				if (Math.Abs(component.DoubleClickInterval - selected) < 0.0001f)
+			get => GetSelectedValue(component => component.DoubleClickInterval, profile => profile.DoubleClickInterval, 0.5f);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveFloatValue(value, component.DoubleClickInterval);
+					if (Math.Abs(component.DoubleClickInterval - selected) < 0.0001f)
+					{
+						return false;
+					}
 
-				component.DoubleClickInterval = selected;
-				return true;
-			});
+					component.DoubleClickInterval = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveFloatValue(value, profile.DoubleClickInterval);
+					if (Math.Abs(profile.DoubleClickInterval - selected) < 0.0001f)
+					{
+						return false;
+					}
+
+					profile.DoubleClickInterval = selected;
+					return true;
+				});
 		}
 
 		[UIValue("longClickInterval")]
 		public float LongClickInterval
 		{
-			get => GetSelectedComponent()?.LongClickInterval ?? 0.6f;
-			set => ApplySelectedComponentChange(component =>
-			{
-				var selected = ResolveFloatValue(value, component.LongClickInterval);
-				if (Math.Abs(component.LongClickInterval - selected) < 0.0001f)
+			get => GetSelectedValue(component => component.LongClickInterval, profile => profile.LongClickInterval, 0.6f);
+			set => ApplySelectedComponentChange(
+				component =>
 				{
-					return false;
-				}
+					var selected = ResolveFloatValue(value, component.LongClickInterval);
+					if (Math.Abs(component.LongClickInterval - selected) < 0.0001f)
+					{
+						return false;
+					}
 
-				component.LongClickInterval = selected;
-				return true;
-			});
+					component.LongClickInterval = selected;
+					return true;
+				},
+				profile =>
+				{
+					var selected = ResolveFloatValue(value, profile.LongClickInterval);
+					if (Math.Abs(profile.LongClickInterval - selected) < 0.0001f)
+					{
+						return false;
+					}
+
+					profile.LongClickInterval = selected;
+					return true;
+				});
 		}
 
 		[UIAction("refresh-components")]
@@ -607,10 +827,60 @@ namespace CustomKeyEvents.UI
 			return selectedComponentOption?.Component;
 		}
 
+		private CustomKeyEventProfile GetSelectedProfile()
+		{
+			if (selectedComponentOption == null || ReferenceEquals(selectedComponentOption, CustomKeyEventCatalog.NoComponent))
+			{
+				return null;
+			}
+
+			if (selectedComponentOption.StoredProfile != null)
+			{
+				return selectedComponentOption.StoredProfile;
+			}
+
+			if (CustomKeyEventSettingsStore.TryGetProfile(selectedComponentOption.IdentityKey, out var profile))
+			{
+				selectedComponentOption.SetStoredProfile(profile);
+				return profile;
+			}
+
+			return null;
+		}
+
 		private bool HasPersistentEvent(CustomKeyEvent.ButtonEventType eventType)
 		{
 			var component = GetSelectedComponent();
-			return component != null && component.HasPersistentEvent(eventType);
+			if (component != null)
+			{
+				return component.HasPersistentEvent(eventType);
+			}
+
+			var profile = GetSelectedProfile();
+			if (profile == null)
+			{
+				return false;
+			}
+
+			switch (eventType)
+			{
+				case CustomKeyEvent.ButtonEventType.Click:
+					return profile.HasClickEvents;
+				case CustomKeyEvent.ButtonEventType.DoubleClick:
+					return profile.HasDoubleClickEvents;
+				case CustomKeyEvent.ButtonEventType.LongClick:
+					return profile.HasLongClickEvents;
+				case CustomKeyEvent.ButtonEventType.Press:
+					return profile.HasPressEvents;
+				case CustomKeyEvent.ButtonEventType.Hold:
+					return profile.HasHoldEvents;
+				case CustomKeyEvent.ButtonEventType.Release:
+					return profile.HasReleaseEvents;
+				case CustomKeyEvent.ButtonEventType.ReleaseAfterLongClick:
+					return profile.HasReleaseAfterLongClickEvents;
+				default:
+					return false;
+			}
 		}
 
 		private void ApplySelectedComponentChange(Func<CustomKeyEvent, bool> update)
@@ -622,7 +892,71 @@ namespace CustomKeyEvents.UI
 			}
 
 			CustomKeyEventSettingsStore.SaveComponent(component);
+			if (CustomKeyEventSettingsStore.TryGetProfile(component.GetStableProfileKey(), out var profile))
+			{
+				selectedComponentOption?.SetStoredProfile(profile);
+			}
 			NotifySelectedComponentProperties();
+		}
+
+		private void ApplySelectedComponentChange(Func<CustomKeyEvent, bool> updateComponent, Func<CustomKeyEventProfile, bool> updateProfile)
+		{
+			var component = GetSelectedComponent();
+			if (component != null)
+			{
+				if (updateComponent == null || !updateComponent(component))
+				{
+					return;
+				}
+
+				CustomKeyEventSettingsStore.SaveComponent(component);
+				if (CustomKeyEventSettingsStore.TryGetProfile(component.GetStableProfileKey(), out var liveProfile))
+				{
+					selectedComponentOption?.SetStoredProfile(liveProfile);
+				}
+
+				NotifySelectedComponentProperties();
+				return;
+			}
+
+			if (selectedComponentOption == null
+				|| ReferenceEquals(selectedComponentOption, CustomKeyEventCatalog.NoComponent)
+				|| string.IsNullOrWhiteSpace(selectedComponentOption.IdentityKey)
+				|| updateProfile == null)
+			{
+				return;
+			}
+
+			var profile = GetSelectedProfile() ?? CreateProfileFromSelection(selectedComponentOption);
+			if (!updateProfile(profile))
+			{
+				return;
+			}
+
+			CustomKeyEventSettingsStore.SaveProfile(selectedComponentOption.IdentityKey, profile);
+			selectedComponentOption.SetStoredProfile(profile);
+			NotifySelectedComponentProperties();
+		}
+
+		private static CustomKeyEventProfile CreateProfileFromSelection(CustomKeyEventOption option)
+		{
+			return new CustomKeyEventProfile
+			{
+				HierarchyPath = option?.HierarchyPath ?? string.Empty,
+				ComponentOrdinal = option?.ComponentOrdinal ?? 0,
+				InitialKeyConfigurationSignature = option?.KeyConfigurationSignature ?? string.Empty,
+				CurrentKeyConfigurationSignature = option?.KeyConfigurationSignature ?? string.Empty
+			};
+		}
+
+		private string BuildStoredProfileSummary(CustomKeyEventProfile profile)
+		{
+			if (profile == null)
+			{
+				return null;
+			}
+
+			return $"Stored Profile (Unloaded); Trigger(Index={profile.IndexTriggerButton}, Vive={profile.ViveTriggerButton}, Oculus={profile.OculusTriggerButton}, WMR={profile.WMRTriggerButton}); Chord({(profile.EnableChordPress ? "On" : "Off")} Index={profile.IndexChordButton}, Vive={profile.ViveChordButton}, Oculus={profile.OculusChordButton}, WMR={profile.WMRChordButton}); Timing(Double={profile.DoubleClickInterval:F2}, Long={profile.LongClickInterval:F2})";
 		}
 
 		private CustomKeyEventOption ResolveComponentOption(object value)
@@ -661,6 +995,7 @@ namespace CustomKeyEvents.UI
 		{
 			NotifyPropertyChanged(nameof(SelectedComponent));
 			NotifyPropertyChanged(nameof(HasSelectedComponent));
+			NotifyPropertyChanged(nameof(HasSelectedTarget));
 			NotifyPropertyChanged(nameof(SelectedComponentPath));
 			NotifyPropertyChanged(nameof(SelectedComponentOrdinal));
 			NotifyPropertyChanged(nameof(SelectedComponentSummary));
@@ -728,6 +1063,23 @@ namespace CustomKeyEvents.UI
 				catch
 				{
 				}
+			}
+
+			return fallback;
+		}
+
+		private T GetSelectedValue<T>(Func<CustomKeyEvent, T> componentSelector, Func<CustomKeyEventProfile, T> profileSelector, T fallback)
+		{
+			var component = GetSelectedComponent();
+			if (component != null && componentSelector != null)
+			{
+				return componentSelector(component);
+			}
+
+			var profile = GetSelectedProfile();
+			if (profile != null && profileSelector != null)
+			{
+				return profileSelector(profile);
 			}
 
 			return fallback;
