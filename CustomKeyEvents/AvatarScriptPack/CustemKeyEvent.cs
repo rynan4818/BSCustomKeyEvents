@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using CustomKeyEvents;
+using CustomKeyEvents.Configuration;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.XR;
@@ -162,11 +165,42 @@ namespace AvatarScriptPack
 		private string lastInputReadDetail = "";
 		private bool lastInputReadPressed = false;
 		private float nextDiagnosticsLogTime = 0f;
+		private float nextReacquireDiagnosticsLogTime = 0f;
+		private string lastReacquireDiagnosticsMessage = string.Empty;
+		private bool initialDefaultsCaptured = false;
+		private string initialKeyConfigurationSignature = string.Empty;
+		private IndexButton initialIndexTriggerButton = IndexButton.None;
+		private ViveButton initialViveTriggerButton = ViveButton.None;
+		private OculusButton initialOculusTriggerButton = OculusButton.None;
+		private WMRButton initialWMRTriggerButton = WMRButton.None;
+		private bool initialEnableChordPress = false;
+		private IndexButton initialIndexChordButton = IndexButton.None;
+		private ViveButton initialViveChordButton = ViveButton.None;
+		private OculusButton initialOculusChordButton = OculusButton.None;
+		private WMRButton initialWMRChordButton = WMRButton.None;
+
+		private void Awake()
+		{
+			CaptureInitialDefaults();
+		}
+
+		private void OnEnable()
+		{
+			CaptureInitialDefaults();
+			CustomKeyEventSettingsStore.Register(this);
+		}
+
+		private void OnDisable()
+		{
+			CustomKeyEventSettingsStore.Unregister(this);
+		}
 
 		void Start()
 		{
 			this.leftController = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
 			this.rightController = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+			CaptureInitialDefaults();
+			CustomKeyEventSettingsStore.Register(this);
 		}
 
 		void Update()
@@ -247,6 +281,190 @@ namespace AvatarScriptPack
 				checkClick = false;
 				OnClick();
 			}
+		}
+
+		public string GetHierarchyPath()
+		{
+			var pathParts = new Stack<string>();
+			for (var current = transform; current != null; current = current.parent)
+			{
+				pathParts.Push(current.name);
+			}
+
+			return string.Join("/", pathParts.ToArray());
+		}
+
+		public int GetComponentOrdinal()
+		{
+			var siblings = GetComponents<CustomKeyEvent>();
+			for (var index = 0; index < siblings.Length; index++)
+			{
+				if (ReferenceEquals(siblings[index], this))
+				{
+					return index + 1;
+				}
+			}
+
+			return 1;
+		}
+
+		public string GetDisplayLabel()
+		{
+			var rootName = GetHierarchyPath().Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+			return string.IsNullOrWhiteSpace(rootName)
+				? $"#{GetComponentOrdinal()}"
+				: $"#{GetComponentOrdinal()} {rootName}";
+		}
+
+		public string GetDefaultSettingsSummary()
+		{
+			return $"Trigger(Index={initialIndexTriggerButton}, Vive={initialViveTriggerButton}, Oculus={initialOculusTriggerButton}, WMR={initialWMRTriggerButton}); Chord({(initialEnableChordPress ? "On" : "Off")} Index={initialIndexChordButton}, Vive={initialViveChordButton}, Oculus={initialOculusChordButton}, WMR={initialWMRChordButton})";
+		}
+
+		public string GetKeyConfigurationSignature()
+		{
+			return BuildKeyConfigurationSignature(
+				IndexTriggerButton,
+				ViveTriggerButton,
+				OculusTriggerButton,
+				WMRTriggerButton,
+				EnableChordPress,
+				IndexChordButton,
+				ViveChordButton,
+				OculusChordButton,
+				WMRChordButton);
+		}
+
+		internal string GetStableProfileKey()
+		{
+			CaptureInitialDefaults();
+			return $"{GetHierarchyPath()}|#{GetComponentOrdinal()}|{initialKeyConfigurationSignature}";
+		}
+
+		internal string GetInitialKeyConfigurationSignature()
+		{
+			CaptureInitialDefaults();
+			return initialKeyConfigurationSignature;
+		}
+
+		internal CustomKeyEventProfile CreateProfileSnapshot()
+		{
+			CaptureInitialDefaults();
+
+			return new CustomKeyEventProfile
+			{
+				HierarchyPath = GetHierarchyPath(),
+				ComponentOrdinal = GetComponentOrdinal(),
+				InitialKeyConfigurationSignature = initialKeyConfigurationSignature,
+				CurrentKeyConfigurationSignature = GetKeyConfigurationSignature(),
+				IndexTriggerButton = IndexTriggerButton,
+				ViveTriggerButton = ViveTriggerButton,
+				OculusTriggerButton = OculusTriggerButton,
+				WMRTriggerButton = WMRTriggerButton,
+				EnableChordPress = EnableChordPress,
+				IndexChordButton = IndexChordButton,
+				ViveChordButton = ViveChordButton,
+				OculusChordButton = OculusChordButton,
+				WMRChordButton = WMRChordButton
+			};
+		}
+
+		internal void ApplyProfile(CustomKeyEventProfile profile)
+		{
+			if (profile == null)
+			{
+				return;
+			}
+
+			IndexTriggerButton = profile.IndexTriggerButton;
+			ViveTriggerButton = profile.ViveTriggerButton;
+			OculusTriggerButton = profile.OculusTriggerButton;
+			WMRTriggerButton = profile.WMRTriggerButton;
+			EnableChordPress = profile.EnableChordPress;
+			IndexChordButton = profile.IndexChordButton;
+			ViveChordButton = profile.ViveChordButton;
+			OculusChordButton = profile.OculusChordButton;
+			WMRChordButton = profile.WMRChordButton;
+			ResetRuntimeState();
+		}
+
+		internal void ResetToInitialDefaults()
+		{
+			CaptureInitialDefaults();
+
+			IndexTriggerButton = initialIndexTriggerButton;
+			ViveTriggerButton = initialViveTriggerButton;
+			OculusTriggerButton = initialOculusTriggerButton;
+			WMRTriggerButton = initialWMRTriggerButton;
+			EnableChordPress = initialEnableChordPress;
+			IndexChordButton = initialIndexChordButton;
+			ViveChordButton = initialViveChordButton;
+			OculusChordButton = initialOculusChordButton;
+			WMRChordButton = initialWMRChordButton;
+			ResetRuntimeState();
+		}
+
+		private void CaptureInitialDefaults()
+		{
+			if (initialDefaultsCaptured)
+			{
+				return;
+			}
+
+			initialIndexTriggerButton = IndexTriggerButton;
+			initialViveTriggerButton = ViveTriggerButton;
+			initialOculusTriggerButton = OculusTriggerButton;
+			initialWMRTriggerButton = WMRTriggerButton;
+			initialEnableChordPress = EnableChordPress;
+			initialIndexChordButton = IndexChordButton;
+			initialViveChordButton = ViveChordButton;
+			initialOculusChordButton = OculusChordButton;
+			initialWMRChordButton = WMRChordButton;
+			initialKeyConfigurationSignature = BuildKeyConfigurationSignature(
+				initialIndexTriggerButton,
+				initialViveTriggerButton,
+				initialOculusTriggerButton,
+				initialWMRTriggerButton,
+				initialEnableChordPress,
+				initialIndexChordButton,
+				initialViveChordButton,
+				initialOculusChordButton,
+				initialWMRChordButton);
+			initialDefaultsCaptured = true;
+		}
+
+		private static string BuildKeyConfigurationSignature(
+			IndexButton indexTriggerButton,
+			ViveButton viveTriggerButton,
+			OculusButton oculusTriggerButton,
+			WMRButton wmrTriggerButton,
+			bool enableChordPress,
+			IndexButton indexChordButton,
+			ViveButton viveChordButton,
+			OculusButton oculusChordButton,
+			WMRButton wmrChordButton)
+		{
+			return $"IndexTriggerButton={indexTriggerButton};ViveTriggerButton={viveTriggerButton};OculusTriggerButton={oculusTriggerButton};WMRTriggerButton={wmrTriggerButton};EnableChordPress={enableChordPress};IndexChordButton={indexChordButton};ViveChordButton={viveChordButton};OculusChordButton={oculusChordButton};WMRChordButton={wmrChordButton}";
+		}
+
+		private void ResetRuntimeState()
+		{
+			pressTime = 0f;
+			releaseTime = 0f;
+			checkClick = false;
+			checkDoubleClick = false;
+			checkLongClick = false;
+			longClicked = false;
+			triggerPressed = false;
+			previousTriggerButton = KeyCode.None;
+			previousChordButton = KeyCode.None;
+			previousChordEnabled = false;
+			legacyFallbackLoggedButtons.Clear();
+			debugOnceLogKeys.Clear();
+			lastInputReadRoute = "none";
+			lastInputReadDetail = "";
+			lastInputReadPressed = false;
+			nextDiagnosticsLogTime = 0f;
 		}
 
 		private KeyCode ResolveChordButton()
@@ -498,7 +716,7 @@ namespace AvatarScriptPack
 				{
 					rightController = controller;
 				}
-				Log($"Reacquire {node}: valid={controller.isValid} name='{controller.name}' characteristics={controller.characteristics}");
+				LogReacquireDiagnostics($"Reacquire {node}: valid={controller.isValid} name='{controller.name}' characteristics={controller.characteristics}");
 			}
 			if (controller.isValid)
 			{
@@ -543,6 +761,24 @@ namespace AvatarScriptPack
 		private void Log(string message)
 		{
 			CustomKeyEvents.Logger.log.Warn(message);
+		}
+
+		private void LogReacquireDiagnostics(string message)
+		{
+			if (string.IsNullOrWhiteSpace(message))
+			{
+				return;
+			}
+
+			if (string.Equals(lastReacquireDiagnosticsMessage, message, StringComparison.Ordinal)
+				&& Time.time < nextReacquireDiagnosticsLogTime)
+			{
+				return;
+			}
+
+			lastReacquireDiagnosticsMessage = message;
+			nextReacquireDiagnosticsLogTime = Time.time + diagnosticsPollInterval;
+			Log(message);
 		}
 
 		private void LogOnce(string key, string message)

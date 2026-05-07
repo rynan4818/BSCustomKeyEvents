@@ -1,0 +1,76 @@
+<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://monkeymanboy.github.io/BSML-Docs/ https://raw.githubusercontent.com/monkeymanboy/BSML-Docs/gh-pages/BSMLSchema.xsd">
+  <settings-container child-control-width="true" child-control-height="true" child-expand-width="true" child-expand-height="false">
+    <horizontal pad-top="5" pad-bottom="10">
+      <vertical>
+        <horizontal pref-width="100">
+          <text text="Custom Key Events Inspector" font-size="3.8" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="component-dropdown" text="Target Component" value="selectedComponent" options="componentOptions" size-delta-x="70" preferred-width="95" apply-on-change="true" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <button text="Refresh" on-click="refresh-components" preferred-width="30" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Hierarchy Path" font-size="3.5" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <text text="~selectedComponentPath" font-size="3" preferred-width="95" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Component Ordinal" font-size="3.5" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <text text="~selectedComponentOrdinal" font-size="3" preferred-width="95" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Default Settings" font-size="3.5" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <text text="~selectedComponentSummary" font-size="3" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <button text="Reset to Defaults" on-click="reset-selected-component" preferred-width="46" interactable="~hasSelectedComponent" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Trigger Buttons" font-size="3.8" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="index-trigger-button-dropdown" text="Index Trigger Button" value="indexTriggerButton" options="indexTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="vive-trigger-button-dropdown" text="Vive Trigger Button" value="viveTriggerButton" options="viveTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="oculus-trigger-button-dropdown" text="Oculus Trigger Button" value="oculusTriggerButton" options="oculusTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="wmr-trigger-button-dropdown" text="WMR Trigger Button" value="wmrTriggerButton" options="wmrTriggerButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Chord Buttons" font-size="3.8" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <toggle-setting id="enable-chord-press-toggle" text="Enable Chord Press" value="enableChordPress" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="index-chord-button-dropdown" text="Index Chord Button" value="indexChordButton" options="indexChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="vive-chord-button-dropdown" text="Vive Chord Button" value="viveChordButton" options="viveChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="oculus-chord-button-dropdown" text="Oculus Chord Button" value="oculusChordButton" options="oculusChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="wmr-chord-button-dropdown" text="WMR Chord Button" value="wmrChordButton" options="wmrChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+      </vertical>
+    </horizontal>
+  </settings-container>
+</bg>
