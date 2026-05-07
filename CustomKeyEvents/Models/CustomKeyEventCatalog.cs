@@ -8,7 +8,7 @@ namespace CustomKeyEvents.Models
 {
 	internal static class CustomKeyEventCatalog
 	{
-		private const int MaxDropdownObjectNameLength = 24;
+		private const int MaxDropdownObjectNameLength = 30;
 		private static readonly CustomKeyEventOption NoComponentOption = new CustomKeyEventOption(
 			"(No CustomKeyEvent components found)",
 			string.Empty,

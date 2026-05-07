@@ -23,6 +23,18 @@ namespace AvatarScriptPack
 			ReleaseAfterLongClick
 		}
 
+		public enum EventRouteTarget
+		{
+			NoChange,
+			Click,
+			DoubleClick,
+			LongClick,
+			Press,
+			Hold,
+			Release,
+			ReleaseAfterLongClick
+		}
+
 		public enum IndexButton
 		{
 			LeftInnerFace = KeyCode.JoystickButton2,
@@ -140,8 +152,36 @@ namespace AvatarScriptPack
 		[Tooltip("Called when released after long click.")]
 		public UnityEvent releaseAfterLongClickEvents = new UnityEvent();
 
-		protected const float interval = 0.5f;
-		protected const float longClickInterval = 0.6f;
+		[Tooltip("Route click events to another event type.")]
+		public EventRouteTarget ClickEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Route double click events to another event type.")]
+		public EventRouteTarget DoubleClickEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Route long click events to another event type.")]
+		public EventRouteTarget LongClickEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Route press events to another event type.")]
+		public EventRouteTarget PressEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Route hold events to another event type.")]
+		public EventRouteTarget HoldEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Route release events to another event type.")]
+		public EventRouteTarget ReleaseEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Route release-after-long-click events to another event type.")]
+		public EventRouteTarget ReleaseAfterLongClickEventsChange = EventRouteTarget.NoChange;
+
+		[Tooltip("Max interval in seconds to treat two short presses as a double click.")]
+		public float DoubleClickInterval = defaultDoubleClickInterval;
+
+		[Tooltip("Hold duration in seconds to trigger long click.")]
+		public float LongClickInterval = defaultLongClickInterval;
+
+		protected const float defaultDoubleClickInterval = 0.5f;
+		protected const float defaultLongClickInterval = 0.6f;
+		protected const float minClickInterval = 0.05f;
 		protected const float analogPressThreshold = 0.55f;
 		protected const float analogReleaseThreshold = 0.25f;
 		protected const float diagnosticsPollInterval = 2.0f;
@@ -178,6 +218,15 @@ namespace AvatarScriptPack
 		private ViveButton initialViveChordButton = ViveButton.None;
 		private OculusButton initialOculusChordButton = OculusButton.None;
 		private WMRButton initialWMRChordButton = WMRButton.None;
+		private EventRouteTarget initialClickEventsChange = EventRouteTarget.NoChange;
+		private EventRouteTarget initialDoubleClickEventsChange = EventRouteTarget.NoChange;
+		private EventRouteTarget initialLongClickEventsChange = EventRouteTarget.NoChange;
+		private EventRouteTarget initialPressEventsChange = EventRouteTarget.NoChange;
+		private EventRouteTarget initialHoldEventsChange = EventRouteTarget.NoChange;
+		private EventRouteTarget initialReleaseEventsChange = EventRouteTarget.NoChange;
+		private EventRouteTarget initialReleaseAfterLongClickEventsChange = EventRouteTarget.NoChange;
+		private float initialDoubleClickInterval = defaultDoubleClickInterval;
+		private float initialLongClickInterval = defaultLongClickInterval;
 
 		private void Awake()
 		{
@@ -210,6 +259,8 @@ namespace AvatarScriptPack
 			{
 				return;
 			}
+			float doubleClickInterval = GetEffectiveDoubleClickInterval();
+			float longClickInterval = GetEffectiveLongClickInterval();
 
 			KeyCode chordButton = ResolveChordButton();
 			bool chordEnabled = EnableChordPress && chordButton != KeyCode.None;
@@ -232,7 +283,7 @@ namespace AvatarScriptPack
 			if (pressedNow && !triggerPressed)
 			{
 				DebugOnlyLogStateChange(triggerButton, true, pressedNow);
-				checkDoubleClick = (Time.time - pressTime <= interval);
+				checkDoubleClick = (Time.time - pressTime <= doubleClickInterval);
 				pressTime = Time.time;
 				OnPress();
 				checkLongClick = true;
@@ -261,7 +312,7 @@ namespace AvatarScriptPack
 					OnReleaseAfterLongClick();
 					longClicked = false;
 				}
-				if (releaseTime - pressTime <= interval)
+				if (releaseTime - pressTime <= doubleClickInterval)
 				{
 					if (checkDoubleClick)
 					{
@@ -276,7 +327,7 @@ namespace AvatarScriptPack
 
 			triggerPressed = pressedNow;
 
-			if (checkClick && Time.time - releaseTime > interval)
+			if (checkClick && Time.time - releaseTime > doubleClickInterval)
 			{
 				checkClick = false;
 				OnClick();
@@ -318,7 +369,7 @@ namespace AvatarScriptPack
 
 		public string GetDefaultSettingsSummary()
 		{
-			return $"Trigger(Index={initialIndexTriggerButton}, Vive={initialViveTriggerButton}, Oculus={initialOculusTriggerButton}, WMR={initialWMRTriggerButton}); Chord({(initialEnableChordPress ? "On" : "Off")} Index={initialIndexChordButton}, Vive={initialViveChordButton}, Oculus={initialOculusChordButton}, WMR={initialWMRChordButton})";
+			return $"Trigger(Index={initialIndexTriggerButton}, Vive={initialViveTriggerButton}, Oculus={initialOculusTriggerButton}, WMR={initialWMRTriggerButton}); Chord({(initialEnableChordPress ? "On" : "Off")} Index={initialIndexChordButton}, Vive={initialViveChordButton}, Oculus={initialOculusChordButton}, WMR={initialWMRChordButton}); Timing(Double={initialDoubleClickInterval:F2}, Long={initialLongClickInterval:F2})";
 		}
 
 		public string GetKeyConfigurationSignature()
@@ -347,6 +398,12 @@ namespace AvatarScriptPack
 			return initialKeyConfigurationSignature;
 		}
 
+		public bool HasPersistentEvent(ButtonEventType eventType)
+		{
+			var unityEvent = GetUnityEvent(eventType);
+			return unityEvent != null && unityEvent.GetPersistentEventCount() > 0;
+		}
+
 		internal CustomKeyEventProfile CreateProfileSnapshot()
 		{
 			CaptureInitialDefaults();
@@ -365,7 +422,16 @@ namespace AvatarScriptPack
 				IndexChordButton = IndexChordButton,
 				ViveChordButton = ViveChordButton,
 				OculusChordButton = OculusChordButton,
-				WMRChordButton = WMRChordButton
+				WMRChordButton = WMRChordButton,
+				ClickEventsChange = ClickEventsChange,
+				DoubleClickEventsChange = DoubleClickEventsChange,
+				LongClickEventsChange = LongClickEventsChange,
+				PressEventsChange = PressEventsChange,
+				HoldEventsChange = HoldEventsChange,
+				ReleaseEventsChange = ReleaseEventsChange,
+				ReleaseAfterLongClickEventsChange = ReleaseAfterLongClickEventsChange,
+				DoubleClickInterval = GetEffectiveDoubleClickInterval(),
+				LongClickInterval = GetEffectiveLongClickInterval()
 			};
 		}
 
@@ -385,6 +451,15 @@ namespace AvatarScriptPack
 			ViveChordButton = profile.ViveChordButton;
 			OculusChordButton = profile.OculusChordButton;
 			WMRChordButton = profile.WMRChordButton;
+			ClickEventsChange = profile.ClickEventsChange;
+			DoubleClickEventsChange = profile.DoubleClickEventsChange;
+			LongClickEventsChange = profile.LongClickEventsChange;
+			PressEventsChange = profile.PressEventsChange;
+			HoldEventsChange = profile.HoldEventsChange;
+			ReleaseEventsChange = profile.ReleaseEventsChange;
+			ReleaseAfterLongClickEventsChange = profile.ReleaseAfterLongClickEventsChange;
+			DoubleClickInterval = SanitizeInterval(profile.DoubleClickInterval, defaultDoubleClickInterval);
+			LongClickInterval = SanitizeInterval(profile.LongClickInterval, defaultLongClickInterval);
 			ResetRuntimeState();
 		}
 
@@ -401,6 +476,15 @@ namespace AvatarScriptPack
 			ViveChordButton = initialViveChordButton;
 			OculusChordButton = initialOculusChordButton;
 			WMRChordButton = initialWMRChordButton;
+			ClickEventsChange = initialClickEventsChange;
+			DoubleClickEventsChange = initialDoubleClickEventsChange;
+			LongClickEventsChange = initialLongClickEventsChange;
+			PressEventsChange = initialPressEventsChange;
+			HoldEventsChange = initialHoldEventsChange;
+			ReleaseEventsChange = initialReleaseEventsChange;
+			ReleaseAfterLongClickEventsChange = initialReleaseAfterLongClickEventsChange;
+			DoubleClickInterval = initialDoubleClickInterval;
+			LongClickInterval = initialLongClickInterval;
 			ResetRuntimeState();
 		}
 
@@ -420,6 +504,15 @@ namespace AvatarScriptPack
 			initialViveChordButton = ViveChordButton;
 			initialOculusChordButton = OculusChordButton;
 			initialWMRChordButton = WMRChordButton;
+			initialClickEventsChange = ClickEventsChange;
+			initialDoubleClickEventsChange = DoubleClickEventsChange;
+			initialLongClickEventsChange = LongClickEventsChange;
+			initialPressEventsChange = PressEventsChange;
+			initialHoldEventsChange = HoldEventsChange;
+			initialReleaseEventsChange = ReleaseEventsChange;
+			initialReleaseAfterLongClickEventsChange = ReleaseAfterLongClickEventsChange;
+			initialDoubleClickInterval = SanitizeInterval(DoubleClickInterval, defaultDoubleClickInterval);
+			initialLongClickInterval = SanitizeInterval(LongClickInterval, defaultLongClickInterval);
 			initialKeyConfigurationSignature = BuildKeyConfigurationSignature(
 				initialIndexTriggerButton,
 				initialViveTriggerButton,
@@ -445,6 +538,26 @@ namespace AvatarScriptPack
 			WMRButton wmrChordButton)
 		{
 			return $"IndexTriggerButton={indexTriggerButton};ViveTriggerButton={viveTriggerButton};OculusTriggerButton={oculusTriggerButton};WMRTriggerButton={wmrTriggerButton};EnableChordPress={enableChordPress};IndexChordButton={indexChordButton};ViveChordButton={viveChordButton};OculusChordButton={oculusChordButton};WMRChordButton={wmrChordButton}";
+		}
+
+		private float GetEffectiveDoubleClickInterval()
+		{
+			return SanitizeInterval(DoubleClickInterval, defaultDoubleClickInterval);
+		}
+
+		private float GetEffectiveLongClickInterval()
+		{
+			return SanitizeInterval(LongClickInterval, defaultLongClickInterval);
+		}
+
+		private static float SanitizeInterval(float value, float fallback)
+		{
+			if (float.IsNaN(value) || float.IsInfinity(value) || value < minClickInterval)
+			{
+				return fallback;
+			}
+
+			return value;
 		}
 
 		private void ResetRuntimeState()
@@ -827,46 +940,124 @@ namespace AvatarScriptPack
 				$"[diag] transition button={triggerButton} toPressed={toPressed} pressedNow={pressedNow} prevTriggerPressed={triggerPressed} pressTime={pressTime:F3} releaseTime={releaseTime:F3} checkDouble={checkDoubleClick} checkLong={checkLongClick} longClicked={longClicked} route={lastInputReadRoute} detail={lastInputReadDetail}");
 		}
 
+		private UnityEvent GetUnityEvent(ButtonEventType eventType)
+		{
+			switch (eventType)
+			{
+				case ButtonEventType.Click:
+					return clickEvents;
+				case ButtonEventType.DoubleClick:
+					return doubleClickEvents;
+				case ButtonEventType.LongClick:
+					return longClickEvents;
+				case ButtonEventType.Press:
+					return pressEvents;
+				case ButtonEventType.Hold:
+					return holdEvents;
+				case ButtonEventType.Release:
+					return releaseEvents;
+				case ButtonEventType.ReleaseAfterLongClick:
+					return releaseAfterLongClickEvents;
+				default:
+					return null;
+			}
+		}
+
+		private EventRouteTarget GetRouteTarget(ButtonEventType sourceEventType)
+		{
+			switch (sourceEventType)
+			{
+				case ButtonEventType.Click:
+					return ClickEventsChange;
+				case ButtonEventType.DoubleClick:
+					return DoubleClickEventsChange;
+				case ButtonEventType.LongClick:
+					return LongClickEventsChange;
+				case ButtonEventType.Press:
+					return PressEventsChange;
+				case ButtonEventType.Hold:
+					return HoldEventsChange;
+				case ButtonEventType.Release:
+					return ReleaseEventsChange;
+				case ButtonEventType.ReleaseAfterLongClick:
+					return ReleaseAfterLongClickEventsChange;
+				default:
+					return EventRouteTarget.NoChange;
+			}
+		}
+
+		private static ButtonEventType ConvertRouteTargetToEventType(EventRouteTarget routeTarget, ButtonEventType fallback)
+		{
+			switch (routeTarget)
+			{
+				case EventRouteTarget.Click:
+					return ButtonEventType.Click;
+				case EventRouteTarget.DoubleClick:
+					return ButtonEventType.DoubleClick;
+				case EventRouteTarget.LongClick:
+					return ButtonEventType.LongClick;
+				case EventRouteTarget.Press:
+					return ButtonEventType.Press;
+				case EventRouteTarget.Hold:
+					return ButtonEventType.Hold;
+				case EventRouteTarget.Release:
+					return ButtonEventType.Release;
+				case EventRouteTarget.ReleaseAfterLongClick:
+					return ButtonEventType.ReleaseAfterLongClick;
+				default:
+					return fallback;
+			}
+		}
+
+		private void InvokeMappedEvent(ButtonEventType sourceEventType)
+		{
+			var routeTarget = GetRouteTarget(sourceEventType);
+			var destinationEventType = ConvertRouteTargetToEventType(routeTarget, sourceEventType);
+			DebugOnlyLog($"InvokeMappedEvent source={sourceEventType} destination={destinationEventType}");
+			var unityEvent = GetUnityEvent(destinationEventType);
+			unityEvent?.Invoke();
+		}
+
 		void OnClick()
 		{
 			DebugOnlyLog("OnClick");
-			clickEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.Click);
 		}
 
 		void OnDoubleClick()
 		{
 			DebugOnlyLog("OnDoubleClick");
-			doubleClickEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.DoubleClick);
 		}
 
 		void OnLongClick()
 		{
 			DebugOnlyLog("OnLongClick");
-			longClickEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.LongClick);
 		}
 
 		void OnPress()
 		{
 			DebugOnlyLog("OnPress");
-			pressEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.Press);
 		}
 
 		void OnHold()
 		{
 			DebugOnlyLog("OnHold");
-			holdEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.Hold);
 		}
 
 		void OnRelease()
 		{
 			DebugOnlyLog("OnRelease");
-			releaseEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.Release);
 		}
 
 		void OnReleaseAfterLongClick()
 		{
 			DebugOnlyLog("OnReleaseAfterLongClick");
-			releaseAfterLongClickEvents.Invoke();
+			InvokeMappedEvent(ButtonEventType.ReleaseAfterLongClick);
 		}
 	}
 }

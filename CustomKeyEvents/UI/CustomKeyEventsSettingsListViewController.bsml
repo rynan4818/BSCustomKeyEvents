@@ -2,30 +2,19 @@
   <settings-container child-control-width="true" child-control-height="true" child-expand-width="true" child-expand-height="false">
     <horizontal pad-top="5" pad-bottom="10">
       <vertical>
-        <horizontal pref-width="100">
-          <text text="Custom Key Events Inspector" font-size="3.8" color="#66CCFF" preferred-width="95" />
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Hierarchy Path + Component Ordinal" font-size="3.5" color="#66CCFF" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="component-dropdown" text="Target Component" value="selectedComponent" options="componentOptions" size-delta-x="70" preferred-width="95" apply-on-change="true" />
+          <text text="~selectedComponentPath" font-size="3" preferred-width="95" />
+          <text text="~selectedComponentOrdinal" font-size="3" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="component-dropdown" text="Target Component" value="selectedComponent" options="componentOptions" size-delta-x="60" preferred-width="60" apply-on-change="true" />
         </horizontal>
         <horizontal pref-width="100">
           <button text="Refresh" on-click="refresh-components" preferred-width="30" />
         </horizontal>
-
-        <horizontal pref-width="100" pad-top="2">
-          <text text="Hierarchy Path" font-size="3.5" color="#66CCFF" preferred-width="95" />
-        </horizontal>
-        <horizontal pref-width="100">
-          <text text="~selectedComponentPath" font-size="3" preferred-width="95" />
-        </horizontal>
-
-        <horizontal pref-width="100" pad-top="2">
-          <text text="Component Ordinal" font-size="3.5" color="#66CCFF" preferred-width="95" />
-        </horizontal>
-        <horizontal pref-width="100">
-          <text text="~selectedComponentOrdinal" font-size="3" preferred-width="95" />
-        </horizontal>
-
         <horizontal pref-width="100" pad-top="2">
           <text text="Default Settings" font-size="3.5" color="#66CCFF" preferred-width="95" />
         </horizontal>
@@ -69,6 +58,41 @@
         </horizontal>
         <horizontal pref-width="100">
           <dropdown-list-setting id="wmr-chord-button-dropdown" text="WMR Chord Button" value="wmrChordButton" options="wmrChordButtonOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2" active="~hasAnyRoutableEvents">
+          <text text="Events Change" font-size="3.8" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasClickEvents">
+          <dropdown-list-setting id="click-events-change-dropdown" text="Click Events Change" value="clickEventsChange" options="clickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasDoubleClickEvents">
+          <dropdown-list-setting id="double-click-events-change-dropdown" text="Double Click Events Change" value="doubleClickEventsChange" options="doubleClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasLongClickEvents">
+          <dropdown-list-setting id="long-click-events-change-dropdown" text="Long Click Events Change" value="longClickEventsChange" options="longClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasPressEvents">
+          <dropdown-list-setting id="press-events-change-dropdown" text="Press Events Change" value="pressEventsChange" options="pressEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasHoldEvents">
+          <dropdown-list-setting id="hold-events-change-dropdown" text="Hold Events Change" value="holdEventsChange" options="holdEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasReleaseEvents">
+          <dropdown-list-setting id="release-events-change-dropdown" text="Release Events Change" value="releaseEventsChange" options="releaseEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+        <horizontal pref-width="100" active="~hasReleaseAfterLongClickEvents">
+          <dropdown-list-setting id="release-after-long-click-events-change-dropdown" text="Release After Long Click Events Change" value="releaseAfterLongClickEventsChange" options="releaseAfterLongClickEventsChangeOptions" size-delta-x="50" preferred-width="95" apply-on-change="true" interactable="~hasSelectedComponent" />
+        </horizontal>
+
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Click Timing" font-size="3.8" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <increment-setting id="double-click-interval-setting" text="Double Click Interval (s)" value="doubleClickInterval" min="0.05" max="3.0" increment="0.05" apply-on-change="true" interactable="~hasSelectedComponent" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <increment-setting id="long-click-interval-setting" text="Long Click Interval (s)" value="longClickInterval" min="0.05" max="5.0" increment="0.05" apply-on-change="true" interactable="~hasSelectedComponent" preferred-width="95" />
         </horizontal>
       </vertical>
     </horizontal>
