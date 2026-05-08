@@ -26,7 +26,7 @@
           <text text="~selectedComponentSummary" font-size="3" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <button text="Reset to Defaults" on-click="reset-selected-component" preferred-width="46" interactable="~hasSelectedTarget" />
+          <button text="~resetActionButtonText" on-click="reset-selected-component" preferred-width="46" interactable="~hasSelectedTarget" />
         </horizontal>
 
         <horizontal pref-width="100" pad-top="2">

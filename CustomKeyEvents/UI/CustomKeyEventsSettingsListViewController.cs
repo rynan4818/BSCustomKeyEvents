@@ -171,6 +171,25 @@ namespace CustomKeyEvents.UI
 		[UIValue("hasSelectedTarget")]
 		public bool HasSelectedTarget => HasSelectedComponent || GetSelectedProfile() != null;
 
+		[UIValue("resetActionButtonText")]
+		public string ResetActionButtonText
+		{
+			get
+			{
+				if (!HasSelectedTarget)
+				{
+					return "Reset to Defaults";
+				}
+
+				if (HasSelectedComponent || (selectedComponentOption?.ActiveDurationSeconds.HasValue ?? false))
+				{
+					return "Reset to Defaults";
+				}
+
+				return "Delete Stored Settings";
+			}
+		}
+
 		[UIValue("hasClickEvents")]
 		public bool HasClickEvents => HasPersistentEvent(CustomKeyEvent.ButtonEventType.Click);
 
@@ -1058,6 +1077,7 @@ namespace CustomKeyEvents.UI
 			NotifyPropertyChanged(nameof(SelectedComponent));
 			NotifyPropertyChanged(nameof(HasSelectedComponent));
 			NotifyPropertyChanged(nameof(HasSelectedTarget));
+			NotifyPropertyChanged(nameof(ResetActionButtonText));
 			NotifyPropertyChanged(nameof(SelectedComponentPath));
 			NotifyPropertyChanged(nameof(SelectedComponentOrdinal));
 			NotifyPropertyChanged(nameof(SelectedComponentActiveDuration));
