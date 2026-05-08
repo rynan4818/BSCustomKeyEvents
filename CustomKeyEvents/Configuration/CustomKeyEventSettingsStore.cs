@@ -8,6 +8,10 @@ namespace CustomKeyEvents.Configuration
     internal static class CustomKeyEventSettingsStore
     {
         private static readonly Dictionary<int, CustomKeyEvent> registeredComponents = new Dictionary<int, CustomKeyEvent>();
+        private static readonly Dictionary<int, string> registeredStableKeyByInstanceId = new Dictionary<int, string>();
+        private static readonly Dictionary<int, float> registeredActiveBaselineByInstanceId = new Dictionary<int, float>();
+        private static readonly Dictionary<string, float> runtimeActiveDurationByStableKey = new Dictionary<string, float>();
+        private static readonly Dictionary<string, CustomKeyEventProfile> runtimeKnownProfilesByStableKey = new Dictionary<string, CustomKeyEventProfile>();
         private static readonly object syncRoot = new object();
 
         public static void Register(CustomKeyEvent component)
@@ -17,13 +21,22 @@ namespace CustomKeyEvents.Configuration
                 return;
             }
 
+            int instanceId = component.GetInstanceID();
+            string stableKey = component.GetStableProfileKey();
             lock (syncRoot)
             {
-                registeredComponents[component.GetInstanceID()] = component;
+                bool alreadyRegistered = registeredStableKeyByInstanceId.ContainsKey(instanceId);
+                registeredComponents[instanceId] = component;
+                registeredStableKeyByInstanceId[instanceId] = stableKey;
+                if (!alreadyRegistered)
+                {
+                    registeredActiveBaselineByInstanceId[instanceId] = component.GetActiveDurationSeconds();
+                }
             }
 
-            EnsureProfileExists(component);
-            ApplyToComponent(component);
+            UpdateRuntimeKnownProfile(component, stableKey);
+            UpdatePersistedProfileMetadataIfExists(component, stableKey);
+            ApplyToComponent(component, stableKey);
         }
 
         public static void Unregister(CustomKeyEvent component)
@@ -33,10 +46,34 @@ namespace CustomKeyEvents.Configuration
                 return;
             }
 
+            string stableKey;
+            int instanceId = component.GetInstanceID();
+            float baselineActiveSeconds = 0f;
+            bool hasBaseline = false;
             lock (syncRoot)
             {
-                registeredComponents.Remove(component.GetInstanceID());
+                if (!registeredStableKeyByInstanceId.TryGetValue(instanceId, out stableKey)
+                    || string.IsNullOrWhiteSpace(stableKey))
+                {
+                    return;
+                }
+
+                registeredComponents.Remove(instanceId);
+                if (registeredActiveBaselineByInstanceId.TryGetValue(instanceId, out var registeredBaseline))
+                {
+                    baselineActiveSeconds = registeredBaseline;
+                    hasBaseline = true;
+                }
+                registeredStableKeyByInstanceId.Remove(instanceId);
+                registeredActiveBaselineByInstanceId.Remove(instanceId);
             }
+
+            float currentActiveSeconds = component.GetActiveDurationSeconds();
+            float deltaActiveSeconds = hasBaseline
+                ? Mathf.Max(0f, currentActiveSeconds - baselineActiveSeconds)
+                : Mathf.Max(0f, currentActiveSeconds);
+            AddRuntimeActiveDuration(stableKey, deltaActiveSeconds);
+            UpdateRuntimeKnownProfile(component, stableKey);
         }
 
         public static void RebindLoadedSceneComponents()
@@ -54,15 +91,26 @@ namespace CustomKeyEvents.Configuration
 
         public static void ReapplyRegisteredComponents()
         {
-            CustomKeyEvent[] snapshot;
+            KeyValuePair<int, CustomKeyEvent>[] snapshot;
             lock (syncRoot)
             {
-                snapshot = registeredComponents.Values.Where(component => component != null).ToArray();
+                snapshot = registeredComponents
+                    .Where(pair => pair.Value != null)
+                    .ToArray();
             }
 
-            foreach (var component in snapshot)
+            foreach (var pair in snapshot)
             {
-                ApplyToComponent(component);
+                string stableKey;
+                lock (syncRoot)
+                {
+                    if (!registeredStableKeyByInstanceId.TryGetValue(pair.Key, out stableKey) || string.IsNullOrWhiteSpace(stableKey))
+                    {
+                        stableKey = pair.Value.GetStableProfileKey();
+                    }
+                }
+
+                ApplyToComponent(pair.Value, stableKey);
             }
         }
 
@@ -73,6 +121,20 @@ namespace CustomKeyEvents.Configuration
                 return;
             }
 
+            var stableKey = ResolveStableKey(component);
+            if (string.IsNullOrWhiteSpace(stableKey))
+            {
+                return;
+            }
+
+            UpdateRuntimeKnownProfile(component, stableKey);
+
+            if (component.IsUsingInitialDefaults())
+            {
+                RemoveProfile(stableKey);
+                return;
+            }
+
             var profiles = PluginConfig.Instance.CustomKeyEventProfiles;
             if (profiles == null)
             {
@@ -80,9 +142,7 @@ namespace CustomKeyEvents.Configuration
                 PluginConfig.Instance.CustomKeyEventProfiles = profiles;
             }
 
-            var stableKey = component.GetStableProfileKey();
-            var profile = component.CreateProfileSnapshot();
-            profiles[stableKey] = profile;
+            profiles[stableKey] = component.CreateProfileSnapshot();
             PluginConfig.Instance.Changed();
         }
 
@@ -110,6 +170,17 @@ namespace CustomKeyEvents.Configuration
                 return;
             }
 
+            lock (syncRoot)
+            {
+                runtimeKnownProfilesByStableKey[stableKey] = profile;
+            }
+
+            if (IsProfileUsingBaseline(profile))
+            {
+                RemoveProfile(stableKey);
+                return;
+            }
+
             var profiles = PluginConfig.Instance.CustomKeyEventProfiles;
             if (profiles == null)
             {
@@ -121,20 +192,151 @@ namespace CustomKeyEvents.Configuration
             PluginConfig.Instance.Changed();
         }
 
-        private static void ApplyToComponent(CustomKeyEvent component)
+        public static void RemoveProfile(string stableKey)
+        {
+            if (string.IsNullOrWhiteSpace(stableKey) || PluginConfig.Instance == null)
+            {
+                return;
+            }
+
+            var profiles = PluginConfig.Instance.CustomKeyEventProfiles;
+            if (profiles != null && profiles.Remove(stableKey))
+            {
+                PluginConfig.Instance.Changed();
+            }
+
+            RestoreRuntimeProfileToBaseline(stableKey);
+        }
+
+        public static bool IsProfileUsingBaseline(CustomKeyEventProfile profile)
+        {
+            if (profile == null || !profile.BaselineInitialized)
+            {
+                return false;
+            }
+
+            return profile.IndexTriggerButton == profile.BaselineIndexTriggerButton
+                && profile.ViveTriggerButton == profile.BaselineViveTriggerButton
+                && profile.OculusTriggerButton == profile.BaselineOculusTriggerButton
+                && profile.WMRTriggerButton == profile.BaselineWMRTriggerButton
+                && profile.EnableChordPress == profile.BaselineEnableChordPress
+                && profile.IndexChordButton == profile.BaselineIndexChordButton
+                && profile.ViveChordButton == profile.BaselineViveChordButton
+                && profile.OculusChordButton == profile.BaselineOculusChordButton
+                && profile.WMRChordButton == profile.BaselineWMRChordButton
+                && profile.ClickEventsChange == profile.BaselineClickEventsChange
+                && profile.DoubleClickEventsChange == profile.BaselineDoubleClickEventsChange
+                && profile.LongClickEventsChange == profile.BaselineLongClickEventsChange
+                && profile.PressEventsChange == profile.BaselinePressEventsChange
+                && profile.HoldEventsChange == profile.BaselineHoldEventsChange
+                && profile.ReleaseEventsChange == profile.BaselineReleaseEventsChange
+                && profile.ReleaseAfterLongClickEventsChange == profile.BaselineReleaseAfterLongClickEventsChange
+                && Mathf.Abs(profile.DoubleClickInterval - profile.BaselineDoubleClickInterval) < 0.0001f
+                && Mathf.Abs(profile.LongClickInterval - profile.BaselineLongClickInterval) < 0.0001f;
+        }
+
+        public static bool TryGetRuntimeActiveDuration(string stableKey, out float activeSeconds)
+        {
+            activeSeconds = 0f;
+            if (string.IsNullOrWhiteSpace(stableKey))
+            {
+                return false;
+            }
+
+            lock (syncRoot)
+            {
+                return runtimeActiveDurationByStableKey.TryGetValue(stableKey, out activeSeconds);
+            }
+        }
+
+        public static bool TryGetRuntimeActiveDuration(CustomKeyEvent component, out float activeSeconds)
+        {
+            activeSeconds = 0f;
+            if (component == null)
+            {
+                return false;
+            }
+
+            int instanceId = component.GetInstanceID();
+            float committedActiveSeconds = 0f;
+            float liveDeltaSeconds = 0f;
+            bool hasValue = false;
+
+            lock (syncRoot)
+            {
+                string stableKey;
+                if (!registeredStableKeyByInstanceId.TryGetValue(instanceId, out stableKey)
+                    || string.IsNullOrWhiteSpace(stableKey))
+                {
+                    return false;
+                }
+
+                if (runtimeActiveDurationByStableKey.TryGetValue(stableKey, out var committed))
+                {
+                    committedActiveSeconds = committed;
+                    hasValue = true;
+                }
+
+                if (registeredActiveBaselineByInstanceId.TryGetValue(instanceId, out var baseline))
+                {
+                    liveDeltaSeconds = Mathf.Max(0f, component.GetActiveDurationSeconds() - baseline);
+                    if (liveDeltaSeconds > 0f)
+                    {
+                        hasValue = true;
+                    }
+                }
+            }
+
+            activeSeconds = committedActiveSeconds + liveDeltaSeconds;
+            return hasValue;
+        }
+
+        public static bool TryGetRegisteredStableKey(CustomKeyEvent component, out string stableKey)
+        {
+            stableKey = null;
+            if (component == null)
+            {
+                return false;
+            }
+
+            int instanceId = component.GetInstanceID();
+            lock (syncRoot)
+            {
+                if (registeredStableKeyByInstanceId.TryGetValue(instanceId, out var registeredStableKey)
+                    && !string.IsNullOrWhiteSpace(registeredStableKey))
+                {
+                    stableKey = registeredStableKey;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static Dictionary<string, CustomKeyEventProfile> GetRuntimeKnownProfilesSnapshot()
+        {
+            lock (syncRoot)
+            {
+                return new Dictionary<string, CustomKeyEventProfile>(runtimeKnownProfilesByStableKey);
+            }
+        }
+
+        private static void ApplyToComponent(CustomKeyEvent component, string stableKey)
         {
             if (component == null || PluginConfig.Instance == null)
             {
                 return;
             }
 
-            if (TryResolveProfile(component, out var profile))
+            if (TryResolveProfile(stableKey, out var profile))
             {
                 component.ApplyProfile(profile);
             }
+
+            UpdateRuntimeKnownProfile(component, stableKey);
         }
 
-        private static bool TryResolveProfile(CustomKeyEvent component, out CustomKeyEventProfile profile)
+        private static bool TryResolveProfile(string stableKey, out CustomKeyEventProfile profile)
         {
             profile = null;
             var config = PluginConfig.Instance;
@@ -144,41 +346,136 @@ namespace CustomKeyEvents.Configuration
                 return false;
             }
 
-            var stableKey = component.GetStableProfileKey();
-            if (profiles.TryGetValue(stableKey, out profile))
-            {
-                return true;
-            }
-
-            return false;
+            return profiles.TryGetValue(stableKey, out profile);
         }
 
-        private static void EnsureProfileExists(CustomKeyEvent component)
+        private static void AddRuntimeActiveDuration(string stableKey, float activeSeconds)
         {
-            if (component == null || PluginConfig.Instance == null)
+            if (string.IsNullOrWhiteSpace(stableKey))
+            {
+                return;
+            }
+
+            lock (syncRoot)
+            {
+                if (activeSeconds <= 0f)
+                {
+                    return;
+                }
+
+                if (runtimeActiveDurationByStableKey.TryGetValue(stableKey, out var existing))
+                {
+                    runtimeActiveDurationByStableKey[stableKey] = existing + activeSeconds;
+                }
+                else
+                {
+                    runtimeActiveDurationByStableKey[stableKey] = activeSeconds;
+                }
+            }
+        }
+
+        private static void UpdateRuntimeKnownProfile(CustomKeyEvent component, string stableKey)
+        {
+            if (component == null || string.IsNullOrWhiteSpace(stableKey))
+            {
+                return;
+            }
+
+            var snapshot = component.CreateProfileSnapshot();
+            lock (syncRoot)
+            {
+                runtimeKnownProfilesByStableKey[stableKey] = snapshot;
+            }
+        }
+
+        private static void RestoreRuntimeProfileToBaseline(string stableKey)
+        {
+            if (string.IsNullOrWhiteSpace(stableKey))
+            {
+                return;
+            }
+
+            lock (syncRoot)
+            {
+                if (!runtimeKnownProfilesByStableKey.TryGetValue(stableKey, out var runtimeProfile)
+                    || runtimeProfile == null
+                    || !runtimeProfile.BaselineInitialized)
+                {
+                    return;
+                }
+
+                runtimeProfile.IndexTriggerButton = runtimeProfile.BaselineIndexTriggerButton;
+                runtimeProfile.ViveTriggerButton = runtimeProfile.BaselineViveTriggerButton;
+                runtimeProfile.OculusTriggerButton = runtimeProfile.BaselineOculusTriggerButton;
+                runtimeProfile.WMRTriggerButton = runtimeProfile.BaselineWMRTriggerButton;
+                runtimeProfile.EnableChordPress = runtimeProfile.BaselineEnableChordPress;
+                runtimeProfile.IndexChordButton = runtimeProfile.BaselineIndexChordButton;
+                runtimeProfile.ViveChordButton = runtimeProfile.BaselineViveChordButton;
+                runtimeProfile.OculusChordButton = runtimeProfile.BaselineOculusChordButton;
+                runtimeProfile.WMRChordButton = runtimeProfile.BaselineWMRChordButton;
+                runtimeProfile.ClickEventsChange = runtimeProfile.BaselineClickEventsChange;
+                runtimeProfile.DoubleClickEventsChange = runtimeProfile.BaselineDoubleClickEventsChange;
+                runtimeProfile.LongClickEventsChange = runtimeProfile.BaselineLongClickEventsChange;
+                runtimeProfile.PressEventsChange = runtimeProfile.BaselinePressEventsChange;
+                runtimeProfile.HoldEventsChange = runtimeProfile.BaselineHoldEventsChange;
+                runtimeProfile.ReleaseEventsChange = runtimeProfile.BaselineReleaseEventsChange;
+                runtimeProfile.ReleaseAfterLongClickEventsChange = runtimeProfile.BaselineReleaseAfterLongClickEventsChange;
+                runtimeProfile.DoubleClickInterval = runtimeProfile.BaselineDoubleClickInterval;
+                runtimeProfile.LongClickInterval = runtimeProfile.BaselineLongClickInterval;
+                runtimeProfile.CurrentKeyConfigurationSignature = runtimeProfile.InitialKeyConfigurationSignature;
+            }
+        }
+
+        private static void UpdatePersistedProfileMetadataIfExists(CustomKeyEvent component, string stableKey)
+        {
+            if (component == null || PluginConfig.Instance == null || string.IsNullOrWhiteSpace(stableKey))
             {
                 return;
             }
 
             var profiles = PluginConfig.Instance.CustomKeyEventProfiles;
-            if (profiles == null)
+            if (profiles == null || !profiles.TryGetValue(stableKey, out var profile))
             {
-                profiles = new Dictionary<string, CustomKeyEventProfile>();
-                PluginConfig.Instance.CustomKeyEventProfiles = profiles;
-            }
-
-            var stableKey = component.GetStableProfileKey();
-            if (profiles.TryGetValue(stableKey, out var existingProfile))
-            {
-                if (UpdateProfileMetadata(existingProfile, component))
-                {
-                    PluginConfig.Instance.Changed();
-                }
                 return;
             }
 
-            profiles[stableKey] = component.CreateProfileSnapshot();
-            PluginConfig.Instance.Changed();
+            bool changed = false;
+            if (!profile.BaselineInitialized)
+            {
+                component.WriteBaselineToProfile(profile);
+                changed = true;
+            }
+
+            if (UpdateProfileMetadata(profile, component))
+            {
+                changed = true;
+            }
+
+            if (IsProfileUsingBaseline(profile))
+            {
+                profiles.Remove(stableKey);
+                changed = true;
+            }
+
+            if (changed)
+            {
+                PluginConfig.Instance.Changed();
+            }
+        }
+
+        private static string ResolveStableKey(CustomKeyEvent component)
+        {
+            if (component == null)
+            {
+                return string.Empty;
+            }
+
+            if (TryGetRegisteredStableKey(component, out var registeredStableKey))
+            {
+                return registeredStableKey;
+            }
+
+            return component.GetStableProfileKey();
         }
 
         private static bool UpdateProfileMetadata(CustomKeyEventProfile profile, CustomKeyEvent component)
@@ -192,6 +489,7 @@ namespace CustomKeyEvents.Configuration
             string hierarchyPath = component.GetHierarchyPath();
             int componentOrdinal = component.GetComponentOrdinal();
             string initialSignature = component.GetInitialKeyConfigurationSignature();
+            string currentSignature = component.GetKeyConfigurationSignature();
 
             if (!string.Equals(profile.HierarchyPath, hierarchyPath))
             {
@@ -208,6 +506,12 @@ namespace CustomKeyEvents.Configuration
             if (!string.Equals(profile.InitialKeyConfigurationSignature, initialSignature))
             {
                 profile.InitialKeyConfigurationSignature = initialSignature;
+                changed = true;
+            }
+
+            if (!string.Equals(profile.CurrentKeyConfigurationSignature, currentSignature))
+            {
+                profile.CurrentKeyConfigurationSignature = currentSignature;
                 changed = true;
             }
 

@@ -201,13 +201,16 @@ namespace AvatarScriptPack
 		private bool previousChordEnabled = false;
 		private readonly HashSet<KeyCode> legacyFallbackLoggedButtons = new HashSet<KeyCode>();
 		private readonly HashSet<string> debugOnceLogKeys = new HashSet<string>();
+		private static readonly HashSet<string> globalWarnOnceKeys = new HashSet<string>();
+		private static readonly object globalWarnLock = new object();
 		private string lastInputReadRoute = "none";
 		private string lastInputReadDetail = "";
 		private bool lastInputReadPressed = false;
 		private float nextDiagnosticsLogTime = 0f;
-		private float nextReacquireDiagnosticsLogTime = 0f;
-		private string lastReacquireDiagnosticsMessage = string.Empty;
 		private bool initialDefaultsCaptured = false;
+		private float accumulatedActiveSeconds = 0f;
+		private float activeSessionStartTime = 0f;
+		private bool activeSessionRunning = false;
 		private string initialKeyConfigurationSignature = string.Empty;
 		private IndexButton initialIndexTriggerButton = IndexButton.None;
 		private ViveButton initialViveTriggerButton = ViveButton.None;
@@ -235,12 +238,20 @@ namespace AvatarScriptPack
 
 		private void OnEnable()
 		{
+			BeginActiveSession();
 			CaptureInitialDefaults();
 			CustomKeyEventSettingsStore.Register(this);
 		}
 
 		private void OnDisable()
 		{
+			EndActiveSession();
+			CustomKeyEventSettingsStore.Unregister(this);
+		}
+
+		private void OnDestroy()
+		{
+			EndActiveSession();
 			CustomKeyEventSettingsStore.Unregister(this);
 		}
 
@@ -372,6 +383,16 @@ namespace AvatarScriptPack
 			return $"Trigger(Index={initialIndexTriggerButton}, Vive={initialViveTriggerButton}, Oculus={initialOculusTriggerButton}, WMR={initialWMRTriggerButton}); Chord({(initialEnableChordPress ? "On" : "Off")} Index={initialIndexChordButton}, Vive={initialViveChordButton}, Oculus={initialOculusChordButton}, WMR={initialWMRChordButton}); Timing(Double={initialDoubleClickInterval:F2}, Long={initialLongClickInterval:F2})";
 		}
 
+		public float GetActiveDurationSeconds()
+		{
+			if (!activeSessionRunning)
+			{
+				return accumulatedActiveSeconds;
+			}
+
+			return accumulatedActiveSeconds + Mathf.Max(0f, Time.realtimeSinceStartup - activeSessionStartTime);
+		}
+
 		public string GetKeyConfigurationSignature()
 		{
 			return BuildKeyConfigurationSignature(
@@ -408,7 +429,7 @@ namespace AvatarScriptPack
 		{
 			CaptureInitialDefaults();
 
-			return new CustomKeyEventProfile
+			var profile = new CustomKeyEventProfile
 			{
 				HierarchyPath = GetHierarchyPath(),
 				ComponentOrdinal = GetComponentOrdinal(),
@@ -440,6 +461,61 @@ namespace AvatarScriptPack
 				DoubleClickInterval = GetEffectiveDoubleClickInterval(),
 				LongClickInterval = GetEffectiveLongClickInterval()
 			};
+
+			WriteBaselineToProfile(profile);
+			return profile;
+		}
+
+		internal void WriteBaselineToProfile(CustomKeyEventProfile profile)
+		{
+			if (profile == null)
+			{
+				return;
+			}
+
+			CaptureInitialDefaults();
+			profile.BaselineInitialized = true;
+			profile.BaselineIndexTriggerButton = initialIndexTriggerButton;
+			profile.BaselineViveTriggerButton = initialViveTriggerButton;
+			profile.BaselineOculusTriggerButton = initialOculusTriggerButton;
+			profile.BaselineWMRTriggerButton = initialWMRTriggerButton;
+			profile.BaselineEnableChordPress = initialEnableChordPress;
+			profile.BaselineIndexChordButton = initialIndexChordButton;
+			profile.BaselineViveChordButton = initialViveChordButton;
+			profile.BaselineOculusChordButton = initialOculusChordButton;
+			profile.BaselineWMRChordButton = initialWMRChordButton;
+			profile.BaselineClickEventsChange = initialClickEventsChange;
+			profile.BaselineDoubleClickEventsChange = initialDoubleClickEventsChange;
+			profile.BaselineLongClickEventsChange = initialLongClickEventsChange;
+			profile.BaselinePressEventsChange = initialPressEventsChange;
+			profile.BaselineHoldEventsChange = initialHoldEventsChange;
+			profile.BaselineReleaseEventsChange = initialReleaseEventsChange;
+			profile.BaselineReleaseAfterLongClickEventsChange = initialReleaseAfterLongClickEventsChange;
+			profile.BaselineDoubleClickInterval = initialDoubleClickInterval;
+			profile.BaselineLongClickInterval = initialLongClickInterval;
+		}
+
+		internal bool IsUsingInitialDefaults()
+		{
+			CaptureInitialDefaults();
+			return IndexTriggerButton == initialIndexTriggerButton
+				&& ViveTriggerButton == initialViveTriggerButton
+				&& OculusTriggerButton == initialOculusTriggerButton
+				&& WMRTriggerButton == initialWMRTriggerButton
+				&& EnableChordPress == initialEnableChordPress
+				&& IndexChordButton == initialIndexChordButton
+				&& ViveChordButton == initialViveChordButton
+				&& OculusChordButton == initialOculusChordButton
+				&& WMRChordButton == initialWMRChordButton
+				&& ClickEventsChange == initialClickEventsChange
+				&& DoubleClickEventsChange == initialDoubleClickEventsChange
+				&& LongClickEventsChange == initialLongClickEventsChange
+				&& PressEventsChange == initialPressEventsChange
+				&& HoldEventsChange == initialHoldEventsChange
+				&& ReleaseEventsChange == initialReleaseEventsChange
+				&& ReleaseAfterLongClickEventsChange == initialReleaseAfterLongClickEventsChange
+				&& Math.Abs(GetEffectiveDoubleClickInterval() - initialDoubleClickInterval) < 0.0001f
+				&& Math.Abs(GetEffectiveLongClickInterval() - initialLongClickInterval) < 0.0001f;
 		}
 
 		internal void ApplyProfile(CustomKeyEventProfile profile)
@@ -585,6 +661,29 @@ namespace AvatarScriptPack
 			lastInputReadDetail = "";
 			lastInputReadPressed = false;
 			nextDiagnosticsLogTime = 0f;
+		}
+
+		private void BeginActiveSession()
+		{
+			if (activeSessionRunning)
+			{
+				return;
+			}
+
+			activeSessionStartTime = Time.realtimeSinceStartup;
+			activeSessionRunning = true;
+		}
+
+		private void EndActiveSession()
+		{
+			if (!activeSessionRunning)
+			{
+				return;
+			}
+
+			accumulatedActiveSeconds += Mathf.Max(0f, Time.realtimeSinceStartup - activeSessionStartTime);
+			activeSessionStartTime = 0f;
+			activeSessionRunning = false;
 		}
 
 		private KeyCode ResolveChordButton()
@@ -836,7 +935,7 @@ namespace AvatarScriptPack
 				{
 					rightController = controller;
 				}
-				LogReacquireDiagnostics($"Reacquire {node}: valid={controller.isValid} name='{controller.name}' characteristics={controller.characteristics}");
+				LogGlobalWarnOnce($"reacquire_{node}", $"Reacquire {node}: valid={controller.isValid} name='{controller.name}' characteristics={controller.characteristics}");
 			}
 			if (controller.isValid)
 			{
@@ -878,35 +977,30 @@ namespace AvatarScriptPack
 			}
 		}
 
-		private void Log(string message)
-		{
-			CustomKeyEvents.Logger.log.Warn(message);
-		}
-
-		private void LogReacquireDiagnostics(string message)
-		{
-			if (string.IsNullOrWhiteSpace(message))
-			{
-				return;
-			}
-
-			if (string.Equals(lastReacquireDiagnosticsMessage, message, StringComparison.Ordinal)
-				&& Time.time < nextReacquireDiagnosticsLogTime)
-			{
-				return;
-			}
-
-			lastReacquireDiagnosticsMessage = message;
-			nextReacquireDiagnosticsLogTime = Time.time + diagnosticsPollInterval;
-			Log(message);
-		}
-
 		private void LogOnce(string key, string message)
 		{
 			if (debugOnceLogKeys.Add(key))
 			{
 				CustomKeyEvents.Logger.log.Warn(message);
 			}
+		}
+
+		private static void LogGlobalWarnOnce(string key, string message)
+		{
+			if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(message))
+			{
+				return;
+			}
+
+			lock (globalWarnLock)
+			{
+				if (!globalWarnOnceKeys.Add(key))
+				{
+					return;
+				}
+			}
+
+			CustomKeyEvents.Logger.log.Warn(message);
 		}
 
 		private void ClearLogOnce(string key)

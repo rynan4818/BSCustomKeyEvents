@@ -10,7 +10,11 @@
           <text text="~selectedComponentOrdinal" font-size="3" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <dropdown-list-setting id="component-dropdown" text="Target Component" value="selectedComponent" options="componentOptions" size-delta-x="60" preferred-width="60" apply-on-change="true" />
+          <text text="Active Duration (session):" font-size="3" preferred-width="45" />
+          <text text="~selectedComponentActiveDuration" font-size="3" preferred-width="45" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <dropdown-list-setting id="component-dropdown" text="Target Component" value="selectedComponent" options="componentOptions" size-delta-x="75" preferred-width="75" apply-on-change="true" />
         </horizontal>
         <horizontal pref-width="100">
           <button text="Refresh" on-click="refresh-components" preferred-width="30" />
@@ -22,7 +26,7 @@
           <text text="~selectedComponentSummary" font-size="3" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <button text="Reset to Defaults" on-click="reset-selected-component" preferred-width="46" interactable="~hasSelectedComponent" />
+          <button text="Reset to Defaults" on-click="reset-selected-component" preferred-width="46" interactable="~hasSelectedTarget" />
         </horizontal>
 
         <horizontal pref-width="100" pad-top="2">

@@ -18,6 +18,7 @@ namespace CustomKeyEvents.Models
 			string.Empty,
 			"No discovered CustomKeyEvent targets were found.",
 			null,
+			null,
 			null);
 
 		public static List<CustomKeyEventOption> Discover()
@@ -32,6 +33,25 @@ namespace CustomKeyEvents.Models
 				}
 
 				optionsByKey[option.IdentityKey] = option;
+			}
+
+			var runtimeProfiles = CustomKeyEventSettingsStore.GetRuntimeKnownProfilesSnapshot();
+			foreach (var pair in runtimeProfiles)
+			{
+				var stableKey = pair.Key;
+				var profile = pair.Value;
+				if (string.IsNullOrWhiteSpace(stableKey) || profile == null)
+				{
+					continue;
+				}
+
+				if (optionsByKey.TryGetValue(stableKey, out var loadedOption))
+				{
+					loadedOption.SetStoredProfile(profile);
+					continue;
+				}
+
+				optionsByKey[stableKey] = CreateOptionFromProfile(stableKey, profile);
 			}
 
 			var profiles = PluginConfig.Instance?.CustomKeyEventProfiles;
@@ -85,43 +105,65 @@ namespace CustomKeyEvents.Models
 			var componentOrdinal = component.GetComponentOrdinal();
 			var keyConfigurationSignature = component.GetInitialKeyConfigurationSignature();
 			var objectName = component.gameObject != null ? component.gameObject.name : string.Empty;
-			var stableKey = component.GetStableProfileKey();
+			var stableKey = CustomKeyEventSettingsStore.TryGetRegisteredStableKey(component, out var registeredStableKey)
+				? registeredStableKey
+				: component.GetStableProfileKey();
+			float activeDurationSeconds = component.GetActiveDurationSeconds();
+			if (CustomKeyEventSettingsStore.TryGetRuntimeActiveDuration(component, out var runtimeActiveSeconds))
+			{
+				activeDurationSeconds = runtimeActiveSeconds;
+			}
 
 			return new CustomKeyEventOption(
 				stableKey,
-				BuildDisplayLabel(componentOrdinal, objectName),
+				BuildDisplayLabel(componentOrdinal, objectName, activeDurationSeconds),
 				hierarchyPath,
 				componentOrdinal,
 				keyConfigurationSignature,
 				component.GetDefaultSettingsSummary(),
 				component,
-				null);
+				null,
+				activeDurationSeconds);
 		}
 
 		private static CustomKeyEventOption CreateOptionFromProfile(string stableKey, CustomKeyEventProfile profile)
 		{
-			var hierarchyPath = profile.HierarchyPath ?? string.Empty;
-			var componentOrdinal = profile.ComponentOrdinal;
+			ExtractStableKeyMetadata(stableKey, out var stableKeyHierarchyPath, out var stableKeyComponentOrdinal);
+			var hierarchyPath = string.IsNullOrWhiteSpace(stableKeyHierarchyPath)
+				? profile.HierarchyPath ?? string.Empty
+				: stableKeyHierarchyPath;
+			var componentOrdinal = stableKeyComponentOrdinal > 0
+				? stableKeyComponentOrdinal
+				: profile.ComponentOrdinal;
 			var keyConfigurationSignature = ResolveKeyConfigurationSignature(stableKey, profile);
 			var objectName = ExtractLeafName(hierarchyPath);
+			float? activeDurationSeconds = null;
+			if (CustomKeyEventSettingsStore.TryGetRuntimeActiveDuration(stableKey, out var cachedActiveSeconds))
+			{
+				activeDurationSeconds = cachedActiveSeconds;
+			}
 
 			return new CustomKeyEventOption(
 				stableKey,
-				BuildDisplayLabel(componentOrdinal, objectName),
+				BuildDisplayLabel(componentOrdinal, objectName, activeDurationSeconds),
 				hierarchyPath,
 				componentOrdinal,
 				keyConfigurationSignature,
 				BuildStoredProfileSummary(profile),
 				null,
-				profile);
+				profile,
+				activeDurationSeconds);
 		}
 
-		private static string BuildDisplayLabel(int componentOrdinal, string objectName)
+		private static string BuildDisplayLabel(int componentOrdinal, string objectName, float? activeDurationSeconds)
 		{
 			var normalizedName = string.IsNullOrWhiteSpace(objectName)
 				? "(Unnamed)"
 				: objectName.Trim();
-			return $"#{componentOrdinal}{TruncateForDropdown(normalizedName, MaxDropdownObjectNameLength)}";
+			var labelCore = $"#{componentOrdinal}{TruncateForDropdown(normalizedName, MaxDropdownObjectNameLength)}";
+			return activeDurationSeconds.HasValue
+				? $"{labelCore}@{activeDurationSeconds.Value:F1}s"
+				: $"{labelCore}@unloaded";
 		}
 
 		private static string TruncateForDropdown(string value, int maxLength)
@@ -173,6 +215,30 @@ namespace CustomKeyEvents.Models
 				: string.Empty;
 		}
 
+		private static void ExtractStableKeyMetadata(string stableKey, out string hierarchyPath, out int componentOrdinal)
+		{
+			hierarchyPath = string.Empty;
+			componentOrdinal = 0;
+			if (string.IsNullOrWhiteSpace(stableKey))
+			{
+				return;
+			}
+
+			int firstSeparator = stableKey.LastIndexOf("|#", StringComparison.Ordinal);
+			int secondSeparator = stableKey.LastIndexOf('|');
+			if (firstSeparator < 0 || secondSeparator <= firstSeparator + 2)
+			{
+				return;
+			}
+
+			hierarchyPath = stableKey.Substring(0, firstSeparator);
+			string ordinalText = stableKey.Substring(firstSeparator + 2, secondSeparator - (firstSeparator + 2));
+			if (!int.TryParse(ordinalText, out componentOrdinal))
+			{
+				componentOrdinal = 0;
+			}
+		}
+
 		private static string BuildStoredProfileSummary(CustomKeyEventProfile profile)
 		{
 			return $"Stored Profile (Unloaded); Trigger(Index={profile.IndexTriggerButton}, Vive={profile.ViveTriggerButton}, Oculus={profile.OculusTriggerButton}, WMR={profile.WMRTriggerButton}); Chord({(profile.EnableChordPress ? "On" : "Off")} Index={profile.IndexChordButton}, Vive={profile.ViveChordButton}, Oculus={profile.OculusChordButton}, WMR={profile.WMRChordButton}); Timing(Double={profile.DoubleClickInterval:F2}, Long={profile.LongClickInterval:F2})";
@@ -181,7 +247,7 @@ namespace CustomKeyEvents.Models
 
 	internal sealed class CustomKeyEventOption
 	{
-		public CustomKeyEventOption(string identityKey, string displayLabel, string hierarchyPath, int componentOrdinal, string keyConfigurationSignature, string defaultSummary, CustomKeyEvent component, CustomKeyEventProfile storedProfile)
+		public CustomKeyEventOption(string identityKey, string displayLabel, string hierarchyPath, int componentOrdinal, string keyConfigurationSignature, string defaultSummary, CustomKeyEvent component, CustomKeyEventProfile storedProfile, float? activeDurationSeconds)
 		{
 			DisplayLabel = displayLabel ?? string.Empty;
 			HierarchyPath = hierarchyPath ?? string.Empty;
@@ -193,6 +259,7 @@ namespace CustomKeyEvents.Models
 				? $"{HierarchyPath}|#{ComponentOrdinal}|{KeyConfigurationSignature}"
 				: identityKey;
 			StoredProfile = storedProfile;
+			ActiveDurationSeconds = activeDurationSeconds;
 		}
 
 		public CustomKeyEvent Component { get; }
@@ -203,13 +270,11 @@ namespace CustomKeyEvents.Models
 		public string KeyConfigurationSignature { get; }
 		public string DefaultSummary { get; }
 		public CustomKeyEventProfile StoredProfile { get; private set; }
+		public float? ActiveDurationSeconds { get; private set; }
 
 		public void SetStoredProfile(CustomKeyEventProfile storedProfile)
 		{
-			if (storedProfile != null)
-			{
-				StoredProfile = storedProfile;
-			}
+			StoredProfile = storedProfile;
 		}
 
 		public override string ToString()

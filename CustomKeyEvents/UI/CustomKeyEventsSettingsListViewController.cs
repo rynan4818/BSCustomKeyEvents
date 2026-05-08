@@ -140,6 +140,25 @@ namespace CustomKeyEvents.UI
 			? "(n/a)"
 			: $"#{selectedComponentOption.ComponentOrdinal}";
 
+		[UIValue("selectedComponentActiveDuration")]
+		public string SelectedComponentActiveDuration
+		{
+			get
+			{
+				if (ReferenceEquals(selectedComponentOption, CustomKeyEventCatalog.NoComponent) || selectedComponentOption == null)
+				{
+					return "(n/a)";
+				}
+
+				if (selectedComponentOption.ActiveDurationSeconds.HasValue)
+				{
+					return $"{selectedComponentOption.ActiveDurationSeconds.Value:F1}s";
+				}
+
+				return "(unloaded)";
+			}
+		}
+
 		[UIValue("selectedComponentSummary")]
 		public string SelectedComponentSummary => GetSelectedComponent()?.GetDefaultSettingsSummary()
 			?? BuildStoredProfileSummary(GetSelectedProfile())
@@ -763,14 +782,25 @@ namespace CustomKeyEvents.UI
 		public void ResetSelectedComponent()
 		{
 			var component = GetSelectedComponent();
-			if (component == null)
+			if (component != null)
+			{
+				component.ResetToInitialDefaults();
+				CustomKeyEventSettingsStore.SaveComponent(component);
+				SyncSelectedStoredProfile(ResolveStableKeyForComponent(component));
+				NotifySelectedComponentProperties();
+				return;
+			}
+
+			if (selectedComponentOption == null
+				|| ReferenceEquals(selectedComponentOption, CustomKeyEventCatalog.NoComponent)
+				|| string.IsNullOrWhiteSpace(selectedComponentOption.IdentityKey))
 			{
 				return;
 			}
 
-			component.ResetToInitialDefaults();
-			CustomKeyEventSettingsStore.SaveComponent(component);
-			NotifySelectedComponentProperties();
+			CustomKeyEventSettingsStore.RemoveProfile(selectedComponentOption.IdentityKey);
+			selectedComponentOption.SetStoredProfile(null);
+			RefreshComponents();
 		}
 
 		private void InitializeEnumDropdowns()
@@ -892,10 +922,7 @@ namespace CustomKeyEvents.UI
 			}
 
 			CustomKeyEventSettingsStore.SaveComponent(component);
-			if (CustomKeyEventSettingsStore.TryGetProfile(component.GetStableProfileKey(), out var profile))
-			{
-				selectedComponentOption?.SetStoredProfile(profile);
-			}
+			SyncSelectedStoredProfile(ResolveStableKeyForComponent(component));
 			NotifySelectedComponentProperties();
 		}
 
@@ -910,10 +937,7 @@ namespace CustomKeyEvents.UI
 				}
 
 				CustomKeyEventSettingsStore.SaveComponent(component);
-				if (CustomKeyEventSettingsStore.TryGetProfile(component.GetStableProfileKey(), out var liveProfile))
-				{
-					selectedComponentOption?.SetStoredProfile(liveProfile);
-				}
+				SyncSelectedStoredProfile(ResolveStableKeyForComponent(component));
 
 				NotifySelectedComponentProperties();
 				return;
@@ -934,8 +958,46 @@ namespace CustomKeyEvents.UI
 			}
 
 			CustomKeyEventSettingsStore.SaveProfile(selectedComponentOption.IdentityKey, profile);
-			selectedComponentOption.SetStoredProfile(profile);
-			NotifySelectedComponentProperties();
+			if (CustomKeyEventSettingsStore.TryGetProfile(selectedComponentOption.IdentityKey, out var savedProfile))
+			{
+				selectedComponentOption.SetStoredProfile(savedProfile);
+				NotifySelectedComponentProperties();
+				return;
+			}
+
+			selectedComponentOption.SetStoredProfile(null);
+			RefreshComponents();
+		}
+
+		private string ResolveStableKeyForComponent(CustomKeyEvent component)
+		{
+			if (component == null)
+			{
+				return string.Empty;
+			}
+
+			if (CustomKeyEventSettingsStore.TryGetRegisteredStableKey(component, out var registeredStableKey))
+			{
+				return registeredStableKey;
+			}
+
+			return component.GetStableProfileKey();
+		}
+
+		private void SyncSelectedStoredProfile(string stableKey)
+		{
+			if (selectedComponentOption == null || string.IsNullOrWhiteSpace(stableKey))
+			{
+				return;
+			}
+
+			if (CustomKeyEventSettingsStore.TryGetProfile(stableKey, out var profile))
+			{
+				selectedComponentOption.SetStoredProfile(profile);
+				return;
+			}
+
+			selectedComponentOption.SetStoredProfile(null);
 		}
 
 		private static CustomKeyEventProfile CreateProfileFromSelection(CustomKeyEventOption option)
@@ -998,6 +1060,7 @@ namespace CustomKeyEvents.UI
 			NotifyPropertyChanged(nameof(HasSelectedTarget));
 			NotifyPropertyChanged(nameof(SelectedComponentPath));
 			NotifyPropertyChanged(nameof(SelectedComponentOrdinal));
+			NotifyPropertyChanged(nameof(SelectedComponentActiveDuration));
 			NotifyPropertyChanged(nameof(SelectedComponentSummary));
 			NotifyPropertyChanged(nameof(HasClickEvents));
 			NotifyPropertyChanged(nameof(HasDoubleClickEvents));
