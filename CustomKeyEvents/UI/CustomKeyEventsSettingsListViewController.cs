@@ -12,6 +12,7 @@ using CustomKeyEvents.Models;
 using HMUI;
 using IPA.Utilities;
 using TMPro;
+using UnityEngine;
 
 namespace CustomKeyEvents.UI
 {
@@ -36,6 +37,7 @@ namespace CustomKeyEvents.UI
 		private string liveMonitorTargetStableKey = string.Empty;
 		private string liveMonitorLastEventText = "(n/a)";
 		private string liveMonitorRecentEventsText = "(n/a)";
+		private float liveMonitorSessionStartRealtime;
 
 		[UIComponent("component-dropdown")]
 		public DropDownListSetting componentDropdown;
@@ -111,6 +113,7 @@ namespace CustomKeyEvents.UI
 		protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 		{
 			base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+			liveMonitorSessionStartRealtime = Time.unscaledTime;
 			CustomKeyEventSettingsStore.SetRuntimeEventMonitorEnabled(true);
 			SubscribeRuntimeEventObserver();
 			RefreshLiveEventMonitorForSelectedTarget();
@@ -1229,7 +1232,7 @@ namespace CustomKeyEvents.UI
 				.AsEnumerable()
 				.Reverse()
 				.Take(LiveMonitorRecentEventDisplayCount)
-				.Select(BuildRuntimeEventDisplay)
+				.Select(entry => BuildRuntimeEventDisplay(entry))
 				.Where(value => !string.IsNullOrWhiteSpace(value))
 				.ToArray());
 			if (string.IsNullOrWhiteSpace(liveMonitorRecentEventsText))
@@ -1244,21 +1247,22 @@ namespace CustomKeyEvents.UI
 			NotifyPropertyChanged(nameof(SelectedComponentLiveRecentEvents));
 		}
 
-		private static string BuildRuntimeEventDisplay(CustomKeyEventSettingsStore.RuntimeEventEntry runtimeEvent)
+		private string BuildRuntimeEventDisplay(CustomKeyEventSettingsStore.RuntimeEventEntry runtimeEvent)
 		{
 			if (runtimeEvent == null)
 			{
 				return string.Empty;
 			}
 
+			float elapsedSeconds = Math.Max(0f, runtimeEvent.RealtimeSeconds - liveMonitorSessionStartRealtime);
 			var sourceLabel = BuildEventTypeDisplayName(runtimeEvent.SourceEventType);
 			var destinationLabel = BuildEventTypeDisplayName(runtimeEvent.DestinationEventType);
 			if (runtimeEvent.SourceEventType == runtimeEvent.DestinationEventType)
 			{
-				return $"{sourceLabel} @{runtimeEvent.RealtimeSeconds:F2}s";
+				return $"{sourceLabel} @{elapsedSeconds:F2}s";
 			}
 
-			return $"{sourceLabel}->{destinationLabel} @{runtimeEvent.RealtimeSeconds:F2}s";
+			return $"{sourceLabel}->{destinationLabel} @{elapsedSeconds:F2}s";
 		}
 
 		private static TEnum ResolveEnumValue<TEnum>(object value, TEnum fallback) where TEnum : struct
