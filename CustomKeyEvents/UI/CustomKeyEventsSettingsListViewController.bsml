@@ -19,6 +19,9 @@
         <horizontal pref-width="100">
           <button text="Refresh" on-click="refresh-components" preferred-width="30" />
         </horizontal>
+        <horizontal pref-width="100">
+          <toggle-setting id="include-hierarchy-path-toggle" text="Include Hierarchy Path In Identity" value="includeHierarchyPathInIdentity" preferred-width="95" apply-on-change="true" />
+        </horizontal>
         <horizontal pref-width="100" pad-top="2">
           <text text="Default Settings" font-size="3.5" color="#66CCFF" preferred-width="95" />
         </horizontal>

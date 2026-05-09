@@ -59,12 +59,19 @@ namespace CustomKeyEvents.Configuration
             }
 
             int instanceId = component.GetInstanceID();
-            string stableKey = component.GetStableProfileKey();
+            string stableKey = ResolvePreferredStableKeyForComponent(component);
             lock (syncRoot)
             {
-                bool alreadyRegistered = registeredStableKeyByInstanceId.ContainsKey(instanceId);
+                bool alreadyRegistered = registeredStableKeyByInstanceId.TryGetValue(instanceId, out var previousStableKey);
                 registeredComponents[instanceId] = component;
                 registeredStableKeyByInstanceId[instanceId] = stableKey;
+                if (alreadyRegistered
+                    && !string.IsNullOrWhiteSpace(previousStableKey)
+                    && !string.Equals(previousStableKey, stableKey, StringComparison.Ordinal))
+                {
+                    MigrateRuntimeKeyStateNoLock(previousStableKey, stableKey);
+                }
+
                 if (!alreadyRegistered)
                 {
                     registeredActiveBaselineByInstanceId[instanceId] = component.GetActiveDurationSeconds();
@@ -117,6 +124,28 @@ namespace CustomKeyEvents.Configuration
         {
             foreach (var component in Resources.FindObjectsOfTypeAll<CustomKeyEvent>())
             {
+                if (!IsSceneObject(component))
+                {
+                    continue;
+                }
+
+                Register(component);
+            }
+        }
+
+        public static void RefreshRegisteredStableKeys()
+        {
+            KeyValuePair<int, CustomKeyEvent>[] snapshot;
+            lock (syncRoot)
+            {
+                snapshot = registeredComponents
+                    .Where(pair => pair.Value != null)
+                    .ToArray();
+            }
+
+            foreach (var pair in snapshot)
+            {
+                var component = pair.Value;
                 if (!IsSceneObject(component))
                 {
                     continue;
@@ -640,7 +669,7 @@ namespace CustomKeyEvents.Configuration
                 return registeredStableKey;
             }
 
-            return component.GetStableProfileKey();
+            return ResolvePreferredStableKeyForComponent(component);
         }
 
         private static bool UpdateProfileMetadata(CustomKeyEventProfile profile, CustomKeyEvent component)
@@ -652,6 +681,7 @@ namespace CustomKeyEvents.Configuration
 
             bool changed = false;
             string hierarchyPath = component.GetHierarchyPath();
+            string objectName = component.gameObject != null ? component.gameObject.name ?? string.Empty : string.Empty;
             int componentOrdinal = component.GetComponentOrdinal();
             string initialSignature = component.GetInitialKeyConfigurationSignature();
             string currentSignature = component.GetKeyConfigurationSignature();
@@ -665,6 +695,12 @@ namespace CustomKeyEvents.Configuration
             if (profile.ComponentOrdinal != componentOrdinal)
             {
                 profile.ComponentOrdinal = componentOrdinal;
+                changed = true;
+            }
+
+            if (!string.Equals(profile.ObjectName, objectName))
+            {
+                profile.ObjectName = objectName;
                 changed = true;
             }
 
@@ -731,6 +767,155 @@ namespace CustomKeyEvents.Configuration
             }
 
             return changed;
+        }
+
+        private static string ResolvePreferredStableKeyForComponent(CustomKeyEvent component)
+        {
+            if (component == null)
+            {
+                return string.Empty;
+            }
+
+            var preferredKey = component.GetStableProfileKey();
+            var candidates = BuildStableKeyCandidates(component, preferredKey);
+            PromoteStoredProfileToPreferredKey(preferredKey, candidates);
+            return preferredKey;
+        }
+
+        private static List<string> BuildStableKeyCandidates(CustomKeyEvent component, string preferredKey)
+        {
+            var candidates = new List<string>(4);
+            AddStableKeyCandidate(candidates, preferredKey);
+            AddStableKeyCandidate(candidates, component.GetStableProfileKey(false));
+            AddStableKeyCandidate(candidates, component.GetStableProfileKey(true));
+            AddStableKeyCandidate(candidates, component.GetLegacyStableProfileKey());
+            return candidates;
+        }
+
+        private static void AddStableKeyCandidate(List<string> candidates, string key)
+        {
+            if (candidates == null || string.IsNullOrWhiteSpace(key))
+            {
+                return;
+            }
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (string.Equals(candidates[i], key, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            candidates.Add(key);
+        }
+
+        private static void PromoteStoredProfileToPreferredKey(string preferredKey, List<string> candidates)
+        {
+            if (string.IsNullOrWhiteSpace(preferredKey) || candidates == null || candidates.Count == 0 || PluginConfig.Instance == null)
+            {
+                return;
+            }
+
+            var profiles = PluginConfig.Instance.CustomKeyEventProfiles;
+            if (profiles == null || profiles.Count == 0 || profiles.ContainsKey(preferredKey))
+            {
+                return;
+            }
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var candidateKey = candidates[i];
+                if (string.IsNullOrWhiteSpace(candidateKey)
+                    || string.Equals(candidateKey, preferredKey, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (!profiles.TryGetValue(candidateKey, out var profile) || profile == null)
+                {
+                    continue;
+                }
+
+                profiles[preferredKey] = profile;
+                profiles.Remove(candidateKey);
+                MigrateRuntimeKeyState(candidateKey, preferredKey);
+                PluginConfig.Instance.Changed();
+                return;
+            }
+        }
+
+        private static void MigrateRuntimeKeyState(string previousKey, string newKey)
+        {
+            if (string.IsNullOrWhiteSpace(previousKey)
+                || string.IsNullOrWhiteSpace(newKey)
+                || string.Equals(previousKey, newKey, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lock (syncRoot)
+            {
+                MigrateRuntimeKeyStateNoLock(previousKey, newKey);
+            }
+        }
+
+        private static void MigrateRuntimeKeyStateNoLock(string previousKey, string newKey)
+        {
+            if (string.IsNullOrWhiteSpace(previousKey)
+                || string.IsNullOrWhiteSpace(newKey)
+                || string.Equals(previousKey, newKey, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (runtimeActiveDurationByStableKey.TryGetValue(previousKey, out var previousDuration))
+            {
+                if (runtimeActiveDurationByStableKey.TryGetValue(newKey, out var currentDuration))
+                {
+                    runtimeActiveDurationByStableKey[newKey] = currentDuration + previousDuration;
+                }
+                else
+                {
+                    runtimeActiveDurationByStableKey[newKey] = previousDuration;
+                }
+
+                runtimeActiveDurationByStableKey.Remove(previousKey);
+            }
+
+            if (runtimeKnownProfilesByStableKey.TryGetValue(previousKey, out var previousProfile))
+            {
+                if (!runtimeKnownProfilesByStableKey.ContainsKey(newKey))
+                {
+                    runtimeKnownProfilesByStableKey[newKey] = previousProfile;
+                }
+
+                runtimeKnownProfilesByStableKey.Remove(previousKey);
+            }
+
+            if (runtimeEventHistoryByStableKey.TryGetValue(previousKey, out var previousHistory))
+            {
+                if (runtimeEventHistoryByStableKey.TryGetValue(newKey, out var currentHistory) && currentHistory != null && previousHistory != null)
+                {
+                    currentHistory.AddRange(previousHistory);
+                    while (currentHistory.Count > maxRuntimeEventHistory)
+                    {
+                        currentHistory.RemoveAt(0);
+                    }
+                }
+                else if (previousHistory != null)
+                {
+                    runtimeEventHistoryByStableKey[newKey] = new List<RuntimeEventEntry>(previousHistory);
+                }
+
+                runtimeEventHistoryByStableKey.Remove(previousKey);
+            }
+
+            if (holdRecordedInCurrentPressByStableKey.TryGetValue(previousKey, out var holdState))
+            {
+                holdRecordedInCurrentPressByStableKey[newKey] = holdState;
+                holdRecordedInCurrentPressByStableKey.Remove(previousKey);
+            }
         }
 
         private static bool IsSceneObject(CustomKeyEvent component)

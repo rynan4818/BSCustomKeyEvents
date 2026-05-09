@@ -5,6 +5,7 @@ namespace CustomKeyEvents.Configuration
     internal class CustomKeyEventProfile
     {
         public virtual string HierarchyPath { get; set; } = string.Empty;
+        public virtual string ObjectName { get; set; } = string.Empty;
         public virtual int ComponentOrdinal { get; set; }
         public virtual string InitialKeyConfigurationSignature { get; set; } = string.Empty;
         public virtual string CurrentKeyConfigurationSignature { get; set; } = string.Empty;

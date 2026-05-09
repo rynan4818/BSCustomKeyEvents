@@ -128,15 +128,26 @@ namespace CustomKeyEvents.Models
 
 		private static CustomKeyEventOption CreateOptionFromProfile(string stableKey, CustomKeyEventProfile profile)
 		{
-			ExtractStableKeyMetadata(stableKey, out var stableKeyHierarchyPath, out var stableKeyComponentOrdinal);
-			var hierarchyPath = string.IsNullOrWhiteSpace(stableKeyHierarchyPath)
-				? profile.HierarchyPath ?? string.Empty
-				: stableKeyHierarchyPath;
-			var componentOrdinal = stableKeyComponentOrdinal > 0
-				? stableKeyComponentOrdinal
-				: profile.ComponentOrdinal;
+			var hierarchyPath = profile.HierarchyPath ?? string.Empty;
+			var componentOrdinal = profile.ComponentOrdinal;
+			if (string.IsNullOrWhiteSpace(hierarchyPath) || componentOrdinal <= 0)
+			{
+				ExtractStableKeyMetadata(stableKey, out var stableKeyHierarchyPath, out var stableKeyComponentOrdinal);
+				if (string.IsNullOrWhiteSpace(hierarchyPath))
+				{
+					hierarchyPath = stableKeyHierarchyPath;
+				}
+
+				if (componentOrdinal <= 0)
+				{
+					componentOrdinal = stableKeyComponentOrdinal;
+				}
+			}
+
 			var keyConfigurationSignature = ResolveKeyConfigurationSignature(stableKey, profile);
-			var objectName = ExtractLeafName(hierarchyPath);
+			var objectName = string.IsNullOrWhiteSpace(profile.ObjectName)
+				? ExtractLeafName(hierarchyPath)
+				: profile.ObjectName;
 			float? activeDurationSeconds = null;
 			if (CustomKeyEventSettingsStore.TryGetRuntimeActiveDuration(stableKey, out var cachedActiveSeconds))
 			{

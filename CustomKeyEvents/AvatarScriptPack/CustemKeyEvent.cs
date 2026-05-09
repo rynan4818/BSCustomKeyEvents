@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using CustomKeyEvents;
 using CustomKeyEvents.Configuration;
 using UnityEngine;
@@ -409,6 +411,19 @@ namespace AvatarScriptPack
 
 		internal string GetStableProfileKey()
 		{
+			var includeHierarchyPath = PluginConfig.Instance?.IncludeHierarchyPathInIdentity ?? false;
+			return GetStableProfileKey(includeHierarchyPath);
+		}
+
+		internal string GetStableProfileKey(bool includeHierarchyPathInIdentity)
+		{
+			CaptureInitialDefaults();
+			var identityPayload = BuildStableIdentityPayload(includeHierarchyPathInIdentity);
+			return $"v3|{ComputeSha256Hex(identityPayload)}";
+		}
+
+		internal string GetLegacyStableProfileKey()
+		{
 			CaptureInitialDefaults();
 			return $"{GetHierarchyPath()}|#{GetComponentOrdinal()}|{initialKeyConfigurationSignature}";
 		}
@@ -432,6 +447,7 @@ namespace AvatarScriptPack
 			var profile = new CustomKeyEventProfile
 			{
 				HierarchyPath = GetHierarchyPath(),
+				ObjectName = gameObject != null ? gameObject.name ?? string.Empty : string.Empty,
 				ComponentOrdinal = GetComponentOrdinal(),
 				InitialKeyConfigurationSignature = initialKeyConfigurationSignature,
 				CurrentKeyConfigurationSignature = GetKeyConfigurationSignature(),
@@ -621,6 +637,101 @@ namespace AvatarScriptPack
 			WMRButton wmrChordButton)
 		{
 			return $"IndexTriggerButton={indexTriggerButton};ViveTriggerButton={viveTriggerButton};OculusTriggerButton={oculusTriggerButton};WMRTriggerButton={wmrTriggerButton};EnableChordPress={enableChordPress};IndexChordButton={indexChordButton};ViveChordButton={viveChordButton};OculusChordButton={oculusChordButton};WMRChordButton={wmrChordButton}";
+		}
+
+		private string BuildStableIdentityPayload(bool includeHierarchyPathInIdentity)
+		{
+			var builder = new StringBuilder(1024);
+			builder.Append("schema=v3;");
+			builder.Append("initial=").Append(initialKeyConfigurationSignature).Append(';');
+			builder.Append("ordinal=").Append(GetComponentOrdinal()).Append(';');
+			builder.Append("components=").Append(BuildAttachedComponentsSignature()).Append(';');
+			builder.Append("events=").Append(BuildPersistentEventLayoutSignature()).Append(';');
+			if (includeHierarchyPathInIdentity)
+			{
+				builder.Append("hierarchy=").Append(GetHierarchyPath()).Append(';');
+			}
+
+			return builder.ToString();
+		}
+
+		private string BuildAttachedComponentsSignature()
+		{
+			var typeCounts = new SortedDictionary<string, int>(StringComparer.Ordinal);
+			var components = GetComponents<Component>();
+			for (int i = 0; i < components.Length; i++)
+			{
+				var component = components[i];
+				if (component == null || component is Transform)
+				{
+					continue;
+				}
+
+				var typeName = component.GetType().FullName ?? component.GetType().Name;
+				if (typeCounts.TryGetValue(typeName, out var count))
+				{
+					typeCounts[typeName] = count + 1;
+				}
+				else
+				{
+					typeCounts[typeName] = 1;
+				}
+			}
+
+			var builder = new StringBuilder(256);
+			foreach (var pair in typeCounts)
+			{
+				builder.Append(pair.Key).Append('#').Append(pair.Value).Append(';');
+			}
+
+			return builder.ToString();
+		}
+
+		private string BuildPersistentEventLayoutSignature()
+		{
+			var builder = new StringBuilder(512);
+			foreach (var eventSlotType in EnumerateEventSlots())
+			{
+				var unityEvent = GetUnityEvent(eventSlotType);
+				if (unityEvent == null)
+				{
+					builder.Append(eventSlotType).Append(":null;");
+					continue;
+				}
+
+				var eventCount = unityEvent.GetPersistentEventCount();
+				builder.Append(eventSlotType).Append(':').Append(eventCount).Append('[');
+				for (int eventIndex = 0; eventIndex < eventCount; eventIndex++)
+				{
+					var target = unityEvent.GetPersistentTarget(eventIndex);
+					var targetTypeName = target != null
+						? target.GetType().FullName ?? target.GetType().Name
+						: "null";
+					var methodName = unityEvent.GetPersistentMethodName(eventIndex) ?? string.Empty;
+					builder.Append(targetTypeName).Append("::").Append(methodName).Append('|');
+				}
+
+				builder.Append("];");
+			}
+
+			return builder.ToString();
+		}
+
+		private static string ComputeSha256Hex(string value)
+		{
+			var text = value ?? string.Empty;
+			var bytes = Encoding.UTF8.GetBytes(text);
+			using (var sha = SHA256.Create())
+			{
+				var hash = sha.ComputeHash(bytes);
+				var builder = new StringBuilder(hash.Length * 2);
+				for (int i = 0; i < hash.Length; i++)
+				{
+					builder.Append(hash[i].ToString("x2"));
+				}
+
+				return builder.ToString();
+			}
 		}
 
 		private float GetEffectiveDoubleClickInterval()

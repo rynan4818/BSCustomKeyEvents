@@ -15,6 +15,8 @@ namespace CustomKeyEvents.Configuration
         [UseConverter(typeof(DictionaryConverter<CustomKeyEventProfile>))]
         public virtual Dictionary<string, CustomKeyEventProfile> CustomKeyEventProfiles { get; set; } = new Dictionary<string, CustomKeyEventProfile>();
 
+        public virtual bool IncludeHierarchyPathInIdentity { get; set; } = false;
+
         public virtual void OnReload()
         {
             CustomKeyEventSettingsStore.ReapplyRegisteredComponents();
@@ -34,6 +36,7 @@ namespace CustomKeyEvents.Configuration
             CustomKeyEventProfiles = other.CustomKeyEventProfiles != null
                 ? new Dictionary<string, CustomKeyEventProfile>(other.CustomKeyEventProfiles)
                 : new Dictionary<string, CustomKeyEventProfile>();
+            IncludeHierarchyPathInIdentity = other.IncludeHierarchyPathInIdentity;
         }
     }
 }

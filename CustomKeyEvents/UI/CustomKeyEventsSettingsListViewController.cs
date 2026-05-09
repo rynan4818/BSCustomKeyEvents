@@ -57,6 +57,9 @@ namespace CustomKeyEvents.UI
 		[UIComponent("enable-chord-press-toggle")]
 		public ToggleSetting enableChordPressToggle;
 
+		[UIComponent("include-hierarchy-path-toggle")]
+		public ToggleSetting includeHierarchyPathToggle;
+
 		[UIComponent("index-chord-button-dropdown")]
 		public DropDownListSetting indexChordButtonDropdown;
 
@@ -204,6 +207,27 @@ namespace CustomKeyEvents.UI
 
 		[UIValue("hasSelectedTarget")]
 		public bool HasSelectedTarget => HasSelectedComponent || GetSelectedProfile() != null;
+
+		[UIValue("includeHierarchyPathInIdentity")]
+		public bool IncludeHierarchyPathInIdentity
+		{
+			get => PluginConfig.Instance?.IncludeHierarchyPathInIdentity ?? false;
+			set
+			{
+				if (PluginConfig.Instance == null || PluginConfig.Instance.IncludeHierarchyPathInIdentity == value)
+				{
+					return;
+				}
+
+				PluginConfig.Instance.IncludeHierarchyPathInIdentity = value;
+				PluginConfig.Instance.Changed();
+				CustomKeyEventSettingsStore.RefreshRegisteredStableKeys();
+				CustomKeyEventSettingsStore.RebindLoadedSceneComponents();
+				RefreshComponents();
+				NotifyPropertyChanged(nameof(IncludeHierarchyPathInIdentity));
+				includeHierarchyPathToggle?.ReceiveValue();
+			}
+		}
 
 		[UIValue("resetActionButtonText")]
 		public string ResetActionButtonText
@@ -828,6 +852,8 @@ namespace CustomKeyEvents.UI
 
 			RefreshDropdown(componentDropdown, componentOptions);
 			NotifyPropertyChanged(nameof(ComponentOptions));
+			NotifyPropertyChanged(nameof(IncludeHierarchyPathInIdentity));
+			includeHierarchyPathToggle?.ReceiveValue();
 			NotifySelectedComponentProperties();
 		}
 
@@ -1058,10 +1084,22 @@ namespace CustomKeyEvents.UI
 			return new CustomKeyEventProfile
 			{
 				HierarchyPath = option?.HierarchyPath ?? string.Empty,
+				ObjectName = ExtractLeafName(option?.HierarchyPath),
 				ComponentOrdinal = option?.ComponentOrdinal ?? 0,
 				InitialKeyConfigurationSignature = option?.KeyConfigurationSignature ?? string.Empty,
 				CurrentKeyConfigurationSignature = option?.KeyConfigurationSignature ?? string.Empty
 			};
+		}
+
+		private static string ExtractLeafName(string hierarchyPath)
+		{
+			if (string.IsNullOrWhiteSpace(hierarchyPath))
+			{
+				return string.Empty;
+			}
+
+			var parts = hierarchyPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+			return parts.Length == 0 ? string.Empty : parts[parts.Length - 1];
 		}
 
 		private string BuildStoredProfileSummary(CustomKeyEventProfile profile)
