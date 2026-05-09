@@ -30,7 +30,12 @@ namespace CustomKeyEvents.UI
 		private readonly List<object> holdEventsChangeOptions = BuildEventRouteOptions(CustomKeyEvent.ButtonEventType.Hold);
 		private readonly List<object> releaseEventsChangeOptions = BuildEventRouteOptions(CustomKeyEvent.ButtonEventType.Release);
 		private readonly List<object> releaseAfterLongClickEventsChangeOptions = BuildEventRouteOptions(CustomKeyEvent.ButtonEventType.ReleaseAfterLongClick);
+		private const int LiveMonitorRecentEventDisplayCount = 5;
 		private CustomKeyEventOption selectedComponentOption;
+		private bool isRuntimeEventObserverSubscribed;
+		private string liveMonitorTargetStableKey = string.Empty;
+		private string liveMonitorLastEventText = "(n/a)";
+		private string liveMonitorRecentEventsText = "(n/a)";
 
 		[UIComponent("component-dropdown")]
 		public DropDownListSetting componentDropdown;
@@ -103,6 +108,22 @@ namespace CustomKeyEvents.UI
 			ConfigureAllDropdownSelectedLabels();
 		}
 
+		protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+		{
+			base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+			CustomKeyEventSettingsStore.SetRuntimeEventMonitorEnabled(true);
+			SubscribeRuntimeEventObserver();
+			RefreshLiveEventMonitorForSelectedTarget();
+			NotifyLiveEventMonitorProperties();
+		}
+
+		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
+		{
+			UnsubscribeRuntimeEventObserver();
+			CustomKeyEventSettingsStore.SetRuntimeEventMonitorEnabled(false);
+			base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
+		}
+
 		[UIValue("componentOptions")]
 		public List<object> ComponentOptions
 		{
@@ -164,6 +185,16 @@ namespace CustomKeyEvents.UI
 			?? BuildStoredProfileSummary(GetSelectedProfile())
 			?? selectedComponentOption?.DefaultSummary
 			?? "No CustomKeyEvent targets are currently discovered.";
+
+		[UIValue("selectedComponentLiveLastEvent")]
+		public string SelectedComponentLiveLastEvent => HasSelectedTarget
+			? liveMonitorLastEventText
+			: "(n/a)";
+
+		[UIValue("selectedComponentLiveRecentEvents")]
+		public string SelectedComponentLiveRecentEvents => HasSelectedTarget
+			? liveMonitorRecentEventsText
+			: "(n/a)";
 
 		[UIValue("hasSelectedComponent")]
 		public bool HasSelectedComponent => GetSelectedComponent() != null;
@@ -1074,6 +1105,7 @@ namespace CustomKeyEvents.UI
 
 		private void NotifySelectedComponentProperties()
 		{
+			RefreshLiveEventMonitorForSelectedTarget();
 			NotifyPropertyChanged(nameof(SelectedComponent));
 			NotifyPropertyChanged(nameof(HasSelectedComponent));
 			NotifyPropertyChanged(nameof(HasSelectedTarget));
@@ -1082,6 +1114,8 @@ namespace CustomKeyEvents.UI
 			NotifyPropertyChanged(nameof(SelectedComponentOrdinal));
 			NotifyPropertyChanged(nameof(SelectedComponentActiveDuration));
 			NotifyPropertyChanged(nameof(SelectedComponentSummary));
+			NotifyPropertyChanged(nameof(SelectedComponentLiveLastEvent));
+			NotifyPropertyChanged(nameof(SelectedComponentLiveRecentEvents));
 			NotifyPropertyChanged(nameof(HasClickEvents));
 			NotifyPropertyChanged(nameof(HasDoubleClickEvents));
 			NotifyPropertyChanged(nameof(HasLongClickEvents));
@@ -1127,6 +1161,104 @@ namespace CustomKeyEvents.UI
 			releaseAfterLongClickEventsChangeDropdown?.ReceiveValue();
 			doubleClickIntervalSetting?.ReceiveValue();
 			longClickIntervalSetting?.ReceiveValue();
+		}
+
+		private void SubscribeRuntimeEventObserver()
+		{
+			if (isRuntimeEventObserverSubscribed)
+			{
+				return;
+			}
+
+			CustomKeyEventSettingsStore.RuntimeEventObserved += OnRuntimeEventObserved;
+			isRuntimeEventObserverSubscribed = true;
+		}
+
+		private void UnsubscribeRuntimeEventObserver()
+		{
+			if (!isRuntimeEventObserverSubscribed)
+			{
+				return;
+			}
+
+			CustomKeyEventSettingsStore.RuntimeEventObserved -= OnRuntimeEventObserved;
+			isRuntimeEventObserverSubscribed = false;
+		}
+
+		private void OnRuntimeEventObserved(string stableKey)
+		{
+			if (!isActivated)
+			{
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(stableKey)
+				|| !string.Equals(stableKey, liveMonitorTargetStableKey, StringComparison.Ordinal))
+			{
+				return;
+			}
+
+			RefreshLiveEventMonitorForSelectedTarget();
+			NotifyLiveEventMonitorProperties();
+		}
+
+		private void RefreshLiveEventMonitorForSelectedTarget()
+		{
+			liveMonitorTargetStableKey = selectedComponentOption?.IdentityKey ?? string.Empty;
+			liveMonitorLastEventText = "(waiting for trigger)";
+			liveMonitorRecentEventsText = "(no events yet)";
+
+			if (selectedComponentOption == null
+				|| ReferenceEquals(selectedComponentOption, CustomKeyEventCatalog.NoComponent)
+				|| string.IsNullOrWhiteSpace(liveMonitorTargetStableKey))
+			{
+				liveMonitorLastEventText = "(n/a)";
+				liveMonitorRecentEventsText = "(n/a)";
+				return;
+			}
+
+			if (!CustomKeyEventSettingsStore.TryGetRuntimeEventSnapshot(liveMonitorTargetStableKey, out var snapshot)
+				|| snapshot == null)
+			{
+				return;
+			}
+
+			liveMonitorLastEventText = BuildRuntimeEventDisplay(snapshot.LastEvent);
+			var recentEvents = snapshot.RecentEvents ?? new List<CustomKeyEventSettingsStore.RuntimeEventEntry>();
+			liveMonitorRecentEventsText = string.Join(" | ", recentEvents
+				.AsEnumerable()
+				.Reverse()
+				.Take(LiveMonitorRecentEventDisplayCount)
+				.Select(BuildRuntimeEventDisplay)
+				.Where(value => !string.IsNullOrWhiteSpace(value))
+				.ToArray());
+			if (string.IsNullOrWhiteSpace(liveMonitorRecentEventsText))
+			{
+				liveMonitorRecentEventsText = "(no events yet)";
+			}
+		}
+
+		private void NotifyLiveEventMonitorProperties()
+		{
+			NotifyPropertyChanged(nameof(SelectedComponentLiveLastEvent));
+			NotifyPropertyChanged(nameof(SelectedComponentLiveRecentEvents));
+		}
+
+		private static string BuildRuntimeEventDisplay(CustomKeyEventSettingsStore.RuntimeEventEntry runtimeEvent)
+		{
+			if (runtimeEvent == null)
+			{
+				return string.Empty;
+			}
+
+			var sourceLabel = BuildEventTypeDisplayName(runtimeEvent.SourceEventType);
+			var destinationLabel = BuildEventTypeDisplayName(runtimeEvent.DestinationEventType);
+			if (runtimeEvent.SourceEventType == runtimeEvent.DestinationEventType)
+			{
+				return $"{sourceLabel} @{runtimeEvent.RealtimeSeconds:F2}s";
+			}
+
+			return $"{sourceLabel}->{destinationLabel} @{runtimeEvent.RealtimeSeconds:F2}s";
 		}
 
 		private static TEnum ResolveEnumValue<TEnum>(object value, TEnum fallback) where TEnum : struct

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AvatarScriptPack;
@@ -7,12 +8,48 @@ namespace CustomKeyEvents.Configuration
 {
     internal static class CustomKeyEventSettingsStore
     {
+        internal sealed class RuntimeEventEntry
+        {
+            public RuntimeEventEntry(CustomKeyEvent.ButtonEventType sourceEventType, CustomKeyEvent.ButtonEventType destinationEventType, float realtimeSeconds, int frameCount)
+            {
+                SourceEventType = sourceEventType;
+                DestinationEventType = destinationEventType;
+                RealtimeSeconds = realtimeSeconds;
+                FrameCount = frameCount;
+            }
+
+            public CustomKeyEvent.ButtonEventType SourceEventType { get; }
+            public CustomKeyEvent.ButtonEventType DestinationEventType { get; }
+            public float RealtimeSeconds { get; }
+            public int FrameCount { get; }
+        }
+
+        internal sealed class RuntimeEventSnapshot
+        {
+            public RuntimeEventSnapshot(string stableKey, RuntimeEventEntry lastEvent, List<RuntimeEventEntry> recentEvents)
+            {
+                StableKey = stableKey ?? string.Empty;
+                LastEvent = lastEvent;
+                RecentEvents = recentEvents ?? new List<RuntimeEventEntry>();
+            }
+
+            public string StableKey { get; }
+            public RuntimeEventEntry LastEvent { get; }
+            public List<RuntimeEventEntry> RecentEvents { get; }
+        }
+
+        private const int maxRuntimeEventHistory = 12;
         private static readonly Dictionary<int, CustomKeyEvent> registeredComponents = new Dictionary<int, CustomKeyEvent>();
         private static readonly Dictionary<int, string> registeredStableKeyByInstanceId = new Dictionary<int, string>();
         private static readonly Dictionary<int, float> registeredActiveBaselineByInstanceId = new Dictionary<int, float>();
         private static readonly Dictionary<string, float> runtimeActiveDurationByStableKey = new Dictionary<string, float>();
         private static readonly Dictionary<string, CustomKeyEventProfile> runtimeKnownProfilesByStableKey = new Dictionary<string, CustomKeyEventProfile>();
+        private static readonly Dictionary<string, List<RuntimeEventEntry>> runtimeEventHistoryByStableKey = new Dictionary<string, List<RuntimeEventEntry>>();
+        private static readonly Dictionary<string, bool> holdRecordedInCurrentPressByStableKey = new Dictionary<string, bool>();
         private static readonly object syncRoot = new object();
+        private static bool isRuntimeEventMonitorEnabled;
+
+        public static event Action<string> RuntimeEventObserved;
 
         public static void Register(CustomKeyEvent component)
         {
@@ -321,6 +358,55 @@ namespace CustomKeyEvents.Configuration
             }
         }
 
+        public static void ReportRuntimeEvent(CustomKeyEvent component, CustomKeyEvent.ButtonEventType sourceEventType, CustomKeyEvent.ButtonEventType destinationEventType, float realtimeSeconds, int frameCount)
+        {
+            if (component == null)
+            {
+                return;
+            }
+
+            var stableKey = ResolveStableKey(component);
+            ReportRuntimeEvent(stableKey, sourceEventType, destinationEventType, realtimeSeconds, frameCount);
+        }
+
+        public static bool TryGetRuntimeEventSnapshot(string stableKey, out RuntimeEventSnapshot snapshot)
+        {
+            snapshot = null;
+            if (string.IsNullOrWhiteSpace(stableKey))
+            {
+                return false;
+            }
+
+            lock (syncRoot)
+            {
+                runtimeEventHistoryByStableKey.TryGetValue(stableKey, out var history);
+                if (history == null || history.Count == 0)
+                {
+                    return false;
+                }
+
+                var copiedHistory = new List<RuntimeEventEntry>(history);
+                var lastEvent = copiedHistory[copiedHistory.Count - 1];
+                snapshot = new RuntimeEventSnapshot(stableKey, lastEvent, copiedHistory);
+                return true;
+            }
+        }
+
+        public static void SetRuntimeEventMonitorEnabled(bool enabled)
+        {
+            lock (syncRoot)
+            {
+                isRuntimeEventMonitorEnabled = enabled;
+                if (enabled)
+                {
+                    return;
+                }
+
+                runtimeEventHistoryByStableKey.Clear();
+                holdRecordedInCurrentPressByStableKey.Clear();
+            }
+        }
+
         private static void ApplyToComponent(CustomKeyEvent component, string stableKey)
         {
             if (component == null || PluginConfig.Instance == null)
@@ -370,6 +456,85 @@ namespace CustomKeyEvents.Configuration
                 else
                 {
                     runtimeActiveDurationByStableKey[stableKey] = activeSeconds;
+                }
+            }
+        }
+
+        private static void ReportRuntimeEvent(string stableKey, CustomKeyEvent.ButtonEventType sourceEventType, CustomKeyEvent.ButtonEventType destinationEventType, float realtimeSeconds, int frameCount)
+        {
+            if (string.IsNullOrWhiteSpace(stableKey))
+            {
+                return;
+            }
+
+            lock (syncRoot)
+            {
+                if (!isRuntimeEventMonitorEnabled)
+                {
+                    return;
+                }
+            }
+
+            if (!ShouldRecordRuntimeEvent(stableKey, sourceEventType))
+            {
+                return;
+            }
+
+            var runtimeEvent = new RuntimeEventEntry(sourceEventType, destinationEventType, realtimeSeconds, frameCount);
+            lock (syncRoot)
+            {
+                if (!runtimeEventHistoryByStableKey.TryGetValue(stableKey, out var history) || history == null)
+                {
+                    history = new List<RuntimeEventEntry>(maxRuntimeEventHistory);
+                    runtimeEventHistoryByStableKey[stableKey] = history;
+                }
+
+                history.Add(runtimeEvent);
+                if (history.Count > maxRuntimeEventHistory)
+                {
+                    history.RemoveAt(0);
+                }
+            }
+
+            var handler = RuntimeEventObserved;
+            if (handler == null)
+            {
+                return;
+            }
+
+            try
+            {
+                handler(stableKey);
+            }
+            catch (Exception ex)
+            {
+                CustomKeyEvents.Logger.log.Warn($"Failed to notify runtime event observers: {ex.Message}");
+            }
+        }
+
+        private static bool ShouldRecordRuntimeEvent(string stableKey, CustomKeyEvent.ButtonEventType sourceEventType)
+        {
+            lock (syncRoot)
+            {
+                switch (sourceEventType)
+                {
+                    case CustomKeyEvent.ButtonEventType.Press:
+                        holdRecordedInCurrentPressByStableKey[stableKey] = false;
+                        return true;
+                    case CustomKeyEvent.ButtonEventType.Hold:
+                        if (holdRecordedInCurrentPressByStableKey.TryGetValue(stableKey, out var holdAlreadyRecorded) && holdAlreadyRecorded)
+                        {
+                            return false;
+                        }
+
+                        holdRecordedInCurrentPressByStableKey[stableKey] = true;
+                        return true;
+                    case CustomKeyEvent.ButtonEventType.Release:
+                    case CustomKeyEvent.ButtonEventType.ReleaseAfterLongClick:
+                        holdRecordedInCurrentPressByStableKey[stableKey] = false;
+                        return true;
+                    default:
+                        return true;
                 }
             }
         }

@@ -1064,9 +1064,9 @@ namespace AvatarScriptPack
 			}
 		}
 
-		private EventRouteTarget GetRouteTarget(ButtonEventType sourceEventType)
+		private EventRouteTarget GetRouteTargetForEventSlot(ButtonEventType eventSlotType)
 		{
-			switch (sourceEventType)
+			switch (eventSlotType)
 			{
 				case ButtonEventType.Click:
 					return ClickEventsChange;
@@ -1087,7 +1087,7 @@ namespace AvatarScriptPack
 			}
 		}
 
-		private static ButtonEventType ConvertRouteTargetToEventType(EventRouteTarget routeTarget, ButtonEventType fallback)
+		private static ButtonEventType ConvertRouteTargetToSourceEvent(EventRouteTarget routeTarget, ButtonEventType fallbackSourceEvent)
 		{
 			switch (routeTarget)
 			{
@@ -1106,59 +1106,95 @@ namespace AvatarScriptPack
 				case EventRouteTarget.ReleaseAfterLongClick:
 					return ButtonEventType.ReleaseAfterLongClick;
 				default:
-					return fallback;
+					return fallbackSourceEvent;
 			}
 		}
 
-		private void InvokeMappedEvent(ButtonEventType sourceEventType)
+		private static IEnumerable<ButtonEventType> EnumerateEventSlots()
 		{
-			var routeTarget = GetRouteTarget(sourceEventType);
-			var destinationEventType = ConvertRouteTargetToEventType(routeTarget, sourceEventType);
-			DebugOnlyLog($"InvokeMappedEvent source={sourceEventType} destination={destinationEventType}");
-			var unityEvent = GetUnityEvent(destinationEventType);
-			unityEvent?.Invoke();
+			yield return ButtonEventType.Click;
+			yield return ButtonEventType.DoubleClick;
+			yield return ButtonEventType.LongClick;
+			yield return ButtonEventType.Press;
+			yield return ButtonEventType.Hold;
+			yield return ButtonEventType.Release;
+			yield return ButtonEventType.ReleaseAfterLongClick;
+		}
+
+		private ButtonEventType ResolveMappedSourceEvent(ButtonEventType eventSlotType)
+		{
+			var routeTarget = GetRouteTargetForEventSlot(eventSlotType);
+			return ConvertRouteTargetToSourceEvent(routeTarget, eventSlotType);
+		}
+
+		private void InvokeEventsForSourceEvent(ButtonEventType sourceEventType)
+		{
+			bool invokedAnyEventSlot = false;
+			foreach (var eventSlotType in EnumerateEventSlots())
+			{
+				if (ResolveMappedSourceEvent(eventSlotType) != sourceEventType)
+				{
+					continue;
+				}
+
+				var unityEvent = GetUnityEvent(eventSlotType);
+				if (unityEvent == null)
+				{
+					continue;
+				}
+
+				invokedAnyEventSlot = true;
+				DebugOnlyLog($"InvokeEventsForSourceEvent source={sourceEventType} eventSlot={eventSlotType}");
+				CustomKeyEventSettingsStore.ReportRuntimeEvent(this, sourceEventType, eventSlotType, Time.unscaledTime, Time.frameCount);
+				unityEvent.Invoke();
+			}
+
+			if (!invokedAnyEventSlot)
+			{
+				DebugOnlyLog($"No event slots mapped for source={sourceEventType}");
+			}
 		}
 
 		void OnClick()
 		{
 			DebugOnlyLog("OnClick");
-			InvokeMappedEvent(ButtonEventType.Click);
+			InvokeEventsForSourceEvent(ButtonEventType.Click);
 		}
 
 		void OnDoubleClick()
 		{
 			DebugOnlyLog("OnDoubleClick");
-			InvokeMappedEvent(ButtonEventType.DoubleClick);
+			InvokeEventsForSourceEvent(ButtonEventType.DoubleClick);
 		}
 
 		void OnLongClick()
 		{
 			DebugOnlyLog("OnLongClick");
-			InvokeMappedEvent(ButtonEventType.LongClick);
+			InvokeEventsForSourceEvent(ButtonEventType.LongClick);
 		}
 
 		void OnPress()
 		{
 			DebugOnlyLog("OnPress");
-			InvokeMappedEvent(ButtonEventType.Press);
+			InvokeEventsForSourceEvent(ButtonEventType.Press);
 		}
 
 		void OnHold()
 		{
 			DebugOnlyLog("OnHold");
-			InvokeMappedEvent(ButtonEventType.Hold);
+			InvokeEventsForSourceEvent(ButtonEventType.Hold);
 		}
 
 		void OnRelease()
 		{
 			DebugOnlyLog("OnRelease");
-			InvokeMappedEvent(ButtonEventType.Release);
+			InvokeEventsForSourceEvent(ButtonEventType.Release);
 		}
 
 		void OnReleaseAfterLongClick()
 		{
 			DebugOnlyLog("OnReleaseAfterLongClick");
-			InvokeMappedEvent(ButtonEventType.ReleaseAfterLongClick);
+			InvokeEventsForSourceEvent(ButtonEventType.ReleaseAfterLongClick);
 		}
 	}
 }

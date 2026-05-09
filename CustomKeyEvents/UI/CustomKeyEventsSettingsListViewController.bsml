@@ -25,6 +25,17 @@
         <horizontal pref-width="100">
           <text text="~selectedComponentSummary" font-size="3" preferred-width="95" />
         </horizontal>
+        <horizontal pref-width="100" pad-top="2">
+          <text text="Live Event Monitor" font-size="3.5" color="#66CCFF" preferred-width="95" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <text text="Last:" font-size="3" preferred-width="16" />
+          <text text="~selectedComponentLiveLastEvent" font-size="3" preferred-width="79" />
+        </horizontal>
+        <horizontal pref-width="100">
+          <text text="Recent:" font-size="3" preferred-width="16" />
+          <text text="~selectedComponentLiveRecentEvents" font-size="2.8" preferred-width="79" />
+        </horizontal>
         <horizontal pref-width="100">
           <button text="~resetActionButtonText" on-click="reset-selected-component" preferred-width="46" interactable="~hasSelectedTarget" />
         </horizontal>
