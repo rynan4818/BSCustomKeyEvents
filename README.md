@@ -50,6 +50,8 @@ https://bsmg.wiki/models/avatars-guide.html
 ## 設定UIの説明
 以下は、`Custom Key Events` の設定画面を上から順番に説明したものです。  
 
+<img width="815" height="363" alt="image" src="https://github.com/user-attachments/assets/225426f8-e521-4115-8cbf-106f90f08ef1" />
+
 ### 1. Target
 - 現在選択中ターゲットの概要を 1 行で表示します。  
   表示形式: `#ComponentOrdinal HierarchyPath@ActiveDuration(sec)`
@@ -74,6 +76,8 @@ https://bsmg.wiki/models/avatars-guide.html
 - 選択中ターゲットの初期設定サマリーを表示します。
 - `Unityエディタ` 側で設定したボタン割り当ての確認用です。
 
+<img width="863" height="207" alt="image" src="https://github.com/user-attachments/assets/0a59763c-4ada-42ff-b680-fb6e8c0e73fd" />
+
 ### 6. Live Event Monitor
 - `Last`: 直近にトリガーしたイベントを表示します。
 - `Recent`: 最近トリガーしたイベント履歴を新しい順で表示します。
@@ -83,6 +87,8 @@ https://bsmg.wiki/models/avatars-guide.html
 - ライブ対象（またはセッション中に有効だった対象）では `RESET TO DEFAULTS` と表示され、現在の上書き設定を初期値に戻します。
 - 完全にアンロード済みのモデルで設定ファイルのみある対象では `DELETE STORED SETTINGS` と表示され、保存済み設定だけを削除します。
 
+<img width="907" height="352" alt="image" src="https://github.com/user-attachments/assets/fa06f59f-2f45-4a5c-ab5f-480b3cc20450" />
+
 ### 8. Trigger Buttons
 - `Index Trigger Button`
 - `Vive Trigger Button`
@@ -90,10 +96,14 @@ https://bsmg.wiki/models/avatars-guide.html
 - `WMR Trigger Button`  ※Index, Vive, Oculus以外の新デバイスはWMRになります
 - 各デバイスの「主ボタン」を選択します。ここで選んだ入力がイベント判定のベースになります。
 
+<img width="919" height="413" alt="image" src="https://github.com/user-attachments/assets/3ceb0b3d-741a-4a96-a8b9-dff48ef65ae4" />
+
 ### 9. Chord Buttons
 - `Enable Chord Press`: 同時押し（Chord）判定を有効化します。
 - `Index / Vive / Oculus / WMR Chord Button`: 各デバイスの同時押し用ボタンを指定します。
 - 同時押しを使わない場合は `Enable Chord Press` を OFF のままにします。
+
+<img width="889" height="387" alt="image" src="https://github.com/user-attachments/assets/1a715c1d-d9bf-456d-8b95-8cc0b41cd98a" />
 
 ### 10. Events Change（登録イベントがある項目のみ表示）
 - 対象コンポーネントで実際にイベント登録されている行だけ表示されます。
@@ -113,3 +123,9 @@ https://bsmg.wiki/models/avatars-guide.html
 - いずれもターゲットごとに個別保存されます。
 
 ## ボタンのイベント発生条件について
+
+<img width="2200" height="852" alt="01_press_hold_release" src="https://github.com/user-attachments/assets/f3970142-2a2b-49d7-b05f-81b11d8f7081" />
+<img width="2200" height="852" alt="02_click" src="https://github.com/user-attachments/assets/f8624b4d-d00d-4b8a-b6cf-a0c9835fd5e6" />
+<img width="2200" height="852" alt="03_double_click" src="https://github.com/user-attachments/assets/2537cab9-3e96-406f-90e0-8b0556cf25fe" />
+<img width="2200" height="852" alt="04_long_click_release_after_long_click" src="https://github.com/user-attachments/assets/4a875d30-4d16-4775-a587-d0c9aa2bfd8a" />
+
