@@ -46,3 +46,70 @@ https://bsmg.wiki/models/avatars-guide.html
 5. [Beat Saber インストールディレクトリ](https://bsmg.wiki/faq/install-folder.html#default-location)の Plugins ディレクトリに 2. の CustomKeyEvents.dll を配置します。
 6. Beat Saber を起動します。
 7. Custom Avatar の設定画面で 4. の Avatar に切り替え、コントローラーの Aボタンを長押ししてみて Avatar の表情が笑顔になれば成功です。
+
+## 設定UIの説明
+以下は、`Custom Key Events` の設定画面を上から順番に説明したものです。  
+
+### 1. Target
+- 現在選択中ターゲットの概要を 1 行で表示します。  
+  表示形式: `#ComponentOrdinal HierarchyPath@ActiveDuration(sec)`
+- `#ComponentOrdinal`: 同一オブジェクトに複数の CustomKeyEvent がある場合の識別番号です。
+- `HierarchyPath`: 対象オブジェクトの階層パスです。
+- `ActiveDuration(sec)`: MOD起動中にそのターゲットがアクティブだった累計秒数です。未ロード時は `unloaded` と表示されます。
+
+### 2. Target Component（ドロップダウン）
+- 設定対象にする CustomKeyEvent コンポーネントを選択します。
+- 候補は、現在ロード中のものに加えて、MOD起動中に検出済みのターゲット（プレイシーンのみのモデルなど、アンロード済み含む）も表示されます。
+
+### 3. REFRESH
+- ターゲット一覧を再取得し、表示を更新します。
+- 特に、プレイ中にのみ出現するモデルを選択したい場合は、いったんそのモデルを表示させてから `REFRESH` を押してください。
+
+### 4. Include Hierarchy Path In Identity（トグル）
+- 設定保存時の識別キーに HierarchyPath を含めるかを切り替えます（既定: OFF）。
+- ON にすると、同一モデルでも配置先の階層が違う場合に別ターゲットとして扱います。
+- OFF にすると、階層変化の影響を受けにくくなります。
+
+### 5. Default Settings
+- 選択中ターゲットの初期設定サマリーを表示します。
+- `Unityエディタ` 側で設定したボタン割り当ての確認用です。
+
+### 6. Live Event Monitor
+- `Last`: 直近にトリガーしたイベントを表示します。
+- `Recent`: 最近トリガーしたイベント履歴を新しい順で表示します。
+- ここで表示される時刻は、UIを開いた時点を 0 秒とした経過時間です。
+
+### 7. RESET TO DEFAULTS / DELETE STORED SETTINGS（ボタン）
+- ライブ対象（またはセッション中に有効だった対象）では `RESET TO DEFAULTS` と表示され、現在の上書き設定を初期値に戻します。
+- 完全にアンロード済みのモデルで設定ファイルのみある対象では `DELETE STORED SETTINGS` と表示され、保存済み設定だけを削除します。
+
+### 8. Trigger Buttons
+- `Index Trigger Button`
+- `Vive Trigger Button`
+- `Oculus Trigger Button`
+- `WMR Trigger Button`  ※Index, Vive, Oculus以外の新デバイスはWMRになります
+- 各デバイスの「主ボタン」を選択します。ここで選んだ入力がイベント判定のベースになります。
+
+### 9. Chord Buttons
+- `Enable Chord Press`: 同時押し（Chord）判定を有効化します。
+- `Index / Vive / Oculus / WMR Chord Button`: 各デバイスの同時押し用ボタンを指定します。
+- 同時押しを使わない場合は `Enable Chord Press` を OFF のままにします。
+
+### 10. Events Change（登録イベントがある項目のみ表示）
+- 対象コンポーネントで実際にイベント登録されている行だけ表示されます。
+- 例:
+  - `Click Events Change`
+  - `Double Click Events Change`
+  - `Long Click Events Change`
+  - `Press Events Change`
+  - `Hold Events Change`
+  - `Release Events Change`
+  - `Release After Long Click Events Change`
+- 各行では「そのイベントに登録済みの処理一式」を、別イベント側へまとめて変更します。
+
+### 11. Click Timing
+- `Double Click Interval (s)`: ダブルクリック判定に使う間隔秒数です。
+- `Long Click Interval (s)`: ロングクリック判定に使う長押し秒数です。
+- いずれもターゲットごとに個別保存されます。
+
+## ボタンのイベント発生条件について
