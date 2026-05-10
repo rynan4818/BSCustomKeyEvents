@@ -1509,7 +1509,7 @@ namespace CustomKeyEvents.UI
 				return;
 			}
 
-			dropdown.values = options;
+			dropdown.Values = options;
 			dropdown.UpdateChoices();
 			dropdown.ReceiveValue();
 			ConfigureDropdownSelectedLabel(dropdown);
@@ -1517,7 +1517,7 @@ namespace CustomKeyEvents.UI
 
 		private static void ConfigureDropdownSelectedLabel(DropDownListSetting dropdown)
 		{
-			TextMeshProUGUI label = dropdown?.dropdown?.GetField<TextMeshProUGUI, SimpleTextDropdown>("_text");
+			TextMeshProUGUI label = dropdown?.Dropdown?.GetField<TextMeshProUGUI, SimpleTextDropdown>("_text");
 			if (label == null)
 			{
 				return;

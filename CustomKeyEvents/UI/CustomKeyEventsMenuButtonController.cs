@@ -19,14 +19,14 @@ namespace CustomKeyEvents.UI
 		public void Initialize()
 		{
 			menuButton = new MenuButton("Custom Key Events", "Inspect loaded CustomKeyEvent components.", ShowFlowCoordinator);
-			MenuButtons.instance?.RegisterButton(menuButton);
+			MenuButtons.Instance?.RegisterButton(menuButton);
 		}
 
 		public void Dispose()
 		{
 			if (menuButton != null)
 			{
-				MenuButtons.instance?.UnregisterButton(menuButton);
+				MenuButtons.Instance?.UnregisterButton(menuButton);
 				menuButton = null;
 			}
 		}
