@@ -1,84 +1,38 @@
-using System.Collections;
+using System;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.MenuButtons;
-using UnityEngine;
+using Zenject;
 
 namespace CustomKeyEvents.UI
 {
-	internal class CustomKeyEventsMenuButtonController : MonoBehaviour
+	internal class CustomKeyEventsMenuButtonController : IInitializable, IDisposable
 	{
-		private static CustomKeyEventsMenuButtonController instance;
+		private readonly CustomKeyEventsSettingsFlowCoordinator flowCoordinator;
 		private MenuButton menuButton;
-		private CustomKeyEventsSettingsFlowCoordinator flowCoordinator;
 
-		public static void Initialize()
+		[Inject]
+		public CustomKeyEventsMenuButtonController(CustomKeyEventsSettingsFlowCoordinator flowCoordinator)
 		{
-			if (instance != null)
-			{
-				return;
-			}
-
-			var gameObject = new GameObject("CustomKeyEventsMenuButtonController");
-			GameObject.DontDestroyOnLoad(gameObject);
-			instance = gameObject.AddComponent<CustomKeyEventsMenuButtonController>();
+			this.flowCoordinator = flowCoordinator;
 		}
 
-		public static void Dispose()
+		public void Initialize()
 		{
-			if (instance == null)
-			{
-				return;
-			}
-
-			instance.Shutdown();
-			GameObject.Destroy(instance.gameObject);
-			instance = null;
-		}
-
-		private void Start()
-		{
-			StartCoroutine(RegisterWhenReady());
-		}
-
-		private IEnumerator RegisterWhenReady()
-		{
-			while (MenuButtons.instance == null)
-			{
-				yield return null;
-			}
-
 			menuButton = new MenuButton("Custom Key Events", "Inspect loaded CustomKeyEvent components.", ShowFlowCoordinator);
-			MenuButtons.instance.RegisterButton(menuButton);
+			MenuButtons.instance?.RegisterButton(menuButton);
 		}
 
-		private void OnDestroy()
+		public void Dispose()
 		{
-			Shutdown();
-		}
-
-		private void Shutdown()
-		{
-			if (menuButton != null && MenuButtons.instance != null)
+			if (menuButton != null)
 			{
-				MenuButtons.instance.UnregisterButton(menuButton);
+				MenuButtons.instance?.UnregisterButton(menuButton);
 				menuButton = null;
 			}
-
-			flowCoordinator = null;
 		}
 
 		private void ShowFlowCoordinator()
 		{
-			if (BeatSaberUI.MainFlowCoordinator == null)
-			{
-				return;
-			}
-
-			if (flowCoordinator == null)
-			{
-				flowCoordinator = BeatSaberUI.CreateFlowCoordinator<CustomKeyEventsSettingsFlowCoordinator>();
-			}
-
 			BeatSaberUI.MainFlowCoordinator.PresentFlowCoordinator(flowCoordinator);
 		}
 	}

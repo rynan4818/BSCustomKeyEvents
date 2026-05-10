@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using CustomKeyEvents.UI;
+using CustomKeyEvents.Installers;
 using IPA;
 using IPA.Config;
 using IPA.Config.Stores;
-using UnityEngine.SceneManagement;
-using UnityEngine;
 using IPALogger = IPA.Logging.Logger;
+using SiraUtil.Zenject;
 
 namespace CustomKeyEvents
 {
-
 	[Plugin(RuntimeOptions.SingleStartInit)]
 	public class Plugin
 	{
@@ -20,30 +14,28 @@ namespace CustomKeyEvents
 		internal static string Name => "CustomKeyEvents";
 
 		[Init]
-		public void Init(IPALogger logger, Config conf)
+		public void Init(IPALogger logger, Config conf, Zenjector zenjector)
 		{
 			instance = this;
 			Logger.log = logger;
 			Logger.log.Debug("Logger initialized.");
 			Configuration.PluginConfig.Instance = conf.Generated<Configuration.PluginConfig>();
 			Logger.log.Debug("Config loaded");
+
+			zenjector.Install<CustomKeyEventsAppInstaller>(Location.App);
+			zenjector.Install<CustomKeyEventsMenuInstaller>(Location.Menu);
 		}
 
 		[OnStart]
 		public void OnApplicationStart()
 		{
 			Logger.log.Debug("OnApplicationStart");
-			new GameObject("CustomKeyEventsController").AddComponent<CustomKeyEventsController>();
-			CustomKeyEventsMenuButtonController.Initialize();
-
 		}
 
 		[OnExit]
 		public void OnApplicationQuit()
 		{
 			Logger.log.Debug("OnApplicationQuit");
-			CustomKeyEventsMenuButtonController.Dispose();
-
 		}
 	}
 }

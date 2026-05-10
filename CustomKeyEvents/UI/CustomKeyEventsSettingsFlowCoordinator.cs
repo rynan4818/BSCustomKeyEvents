@@ -1,5 +1,6 @@
 using BeatSaberMarkupLanguage;
 using HMUI;
+using Zenject;
 
 namespace CustomKeyEvents.UI
 {
@@ -7,13 +8,18 @@ namespace CustomKeyEvents.UI
 	{
 		private CustomKeyEventsSettingsListViewController listViewController;
 
+		[Inject]
+		public void Construct(CustomKeyEventsSettingsListViewController listViewController)
+		{
+			this.listViewController = listViewController;
+		}
+
 		protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 		{
 			if (firstActivation)
 			{
 				SetTitle("Custom Key Events");
 				showBackButton = true;
-				listViewController = BeatSaberUI.CreateViewController<CustomKeyEventsSettingsListViewController>();
 				ProvideInitialViewControllers(listViewController);
 			}
 		}
