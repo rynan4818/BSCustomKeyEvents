@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using CustomKeyEvents;
@@ -232,6 +233,12 @@ namespace AvatarScriptPack
 		private EventRouteTarget initialReleaseAfterLongClickEventsChange = EventRouteTarget.NoChange;
 		private float initialDoubleClickInterval = defaultDoubleClickInterval;
 		private float initialLongClickInterval = defaultLongClickInterval;
+		private int initialComponentOrdinal = 1;
+		private string initialAttachedComponentsSignature = string.Empty;
+		private string initialPersistentEventLayoutSignature = string.Empty;
+		private string initialHierarchyPath = string.Empty;
+		private string initialStableProfileKeyWithHierarchyPath = string.Empty;
+		private string initialStableProfileKeyWithoutHierarchyPath = string.Empty;
 
 		private void Awake()
 		{
@@ -418,14 +425,9 @@ namespace AvatarScriptPack
 		internal string GetStableProfileKey(bool includeHierarchyPathInIdentity)
 		{
 			CaptureInitialDefaults();
-			var identityPayload = BuildStableIdentityPayload(includeHierarchyPathInIdentity);
-			return $"v3|{ComputeSha256Hex(identityPayload)}";
-		}
-
-		internal string GetLegacyStableProfileKey()
-		{
-			CaptureInitialDefaults();
-			return $"{GetHierarchyPath()}|#{GetComponentOrdinal()}|{initialKeyConfigurationSignature}";
+			return includeHierarchyPathInIdentity
+				? initialStableProfileKeyWithHierarchyPath
+				: initialStableProfileKeyWithoutHierarchyPath;
 		}
 
 		internal string GetInitialKeyConfigurationSignature()
@@ -612,6 +614,10 @@ namespace AvatarScriptPack
 			initialReleaseAfterLongClickEventsChange = ReleaseAfterLongClickEventsChange;
 			initialDoubleClickInterval = SanitizeInterval(DoubleClickInterval, defaultDoubleClickInterval);
 			initialLongClickInterval = SanitizeInterval(LongClickInterval, defaultLongClickInterval);
+			initialHierarchyPath = GetHierarchyPath();
+			initialComponentOrdinal = GetComponentOrdinal();
+			initialAttachedComponentsSignature = BuildAttachedComponentsSignature();
+			initialPersistentEventLayoutSignature = BuildPersistentEventLayoutSignature();
 			initialKeyConfigurationSignature = BuildKeyConfigurationSignature(
 				initialIndexTriggerButton,
 				initialViveTriggerButton,
@@ -622,6 +628,10 @@ namespace AvatarScriptPack
 				initialViveChordButton,
 				initialOculusChordButton,
 				initialWMRChordButton);
+			initialStableProfileKeyWithoutHierarchyPath = BuildStableProfileKeyId(false);
+			initialStableProfileKeyWithHierarchyPath = BuildStableProfileKeyId(true);
+			DebugOnlyLog($"StableKey cached (without hierarchy): {initialStableProfileKeyWithoutHierarchyPath}");
+			DebugOnlyLog($"StableKey cached (with hierarchy): {initialStableProfileKeyWithHierarchyPath}");
 			initialDefaultsCaptured = true;
 		}
 
@@ -642,14 +652,14 @@ namespace AvatarScriptPack
 		private string BuildStableIdentityPayload(bool includeHierarchyPathInIdentity)
 		{
 			var builder = new StringBuilder(1024);
-			builder.Append("schema=v3;");
+			builder.Append("schema=v1;");
 			builder.Append("initial=").Append(initialKeyConfigurationSignature).Append(';');
-			builder.Append("ordinal=").Append(GetComponentOrdinal()).Append(';');
-			builder.Append("components=").Append(BuildAttachedComponentsSignature()).Append(';');
-			builder.Append("events=").Append(BuildPersistentEventLayoutSignature()).Append(';');
+			builder.Append("ordinal=").Append(initialComponentOrdinal > 0 ? initialComponentOrdinal : 1).Append(';');
+			builder.Append("components=").Append(initialAttachedComponentsSignature).Append(';');
+			builder.Append("events=").Append(initialPersistentEventLayoutSignature).Append(';');
 			if (includeHierarchyPathInIdentity)
 			{
-				builder.Append("hierarchy=").Append(GetHierarchyPath()).Append(';');
+				builder.Append("hierarchy=").Append(initialHierarchyPath ?? string.Empty).Append(';');
 			}
 
 			return builder.ToString();
@@ -704,17 +714,198 @@ namespace AvatarScriptPack
 				for (int eventIndex = 0; eventIndex < eventCount; eventIndex++)
 				{
 					var target = unityEvent.GetPersistentTarget(eventIndex);
-					var targetTypeName = target != null
-						? target.GetType().FullName ?? target.GetType().Name
-						: "null";
 					var methodName = unityEvent.GetPersistentMethodName(eventIndex) ?? string.Empty;
-					builder.Append(targetTypeName).Append("::").Append(methodName).Append('|');
+					builder.Append(BuildPersistentListenerSignature(unityEvent, eventIndex, target, methodName)).Append('|');
 				}
 
 				builder.Append("];");
 			}
 
 			return builder.ToString();
+		}
+
+		private string BuildPersistentListenerSignature(UnityEvent unityEvent, int eventIndex, UnityEngine.Object target, string methodName)
+		{
+			var targetTypeName = target != null
+				? target.GetType().FullName ?? target.GetType().Name
+				: "null";
+			var builder = new StringBuilder(256);
+			builder.Append(targetTypeName).Append("::").Append(SanitizeSignatureValue(methodName));
+			builder.Append("::").Append(BuildPersistentCallArgumentSignature(unityEvent, eventIndex));
+			if (IsAnimatorTarget(target))
+			{
+				builder.Append("::anim=").Append(BuildAnimatorIdentitySignature(target));
+			}
+
+			return builder.ToString();
+		}
+
+		private string BuildPersistentCallArgumentSignature(UnityEvent unityEvent, int eventIndex)
+		{
+			try
+			{
+				var persistentCall = TryGetPersistentCall(unityEvent, eventIndex);
+				if (persistentCall == null)
+				{
+					return "arg=unavailable";
+				}
+
+				var modeObject = ReadFieldValue(persistentCall, "m_Mode");
+				var modeName = modeObject != null ? modeObject.ToString() : "Unknown";
+				var arguments = ReadFieldValue(persistentCall, "m_Arguments");
+				if (arguments == null)
+				{
+					return $"mode={modeName};arg=none";
+				}
+
+				var stringArgument = ReadFieldValue(arguments, "m_StringArgument") as string ?? string.Empty;
+				var intArgument = Convert.ToInt32(ReadFieldValue(arguments, "m_IntArgument") ?? 0);
+				var floatArgument = Convert.ToSingle(ReadFieldValue(arguments, "m_FloatArgument") ?? 0f);
+				var boolArgument = Convert.ToBoolean(ReadFieldValue(arguments, "m_BoolArgument") ?? false);
+				var objectArgument = ReadFieldValue(arguments, "m_ObjectArgument") as UnityEngine.Object;
+				var objectArgumentType = ReadFieldValue(arguments, "m_ObjectArgumentAssemblyTypeName") as string ?? string.Empty;
+				var objectArgumentName = objectArgument != null ? objectArgument.name ?? string.Empty : string.Empty;
+				var objectArgumentRuntimeType = objectArgument != null
+					? objectArgument.GetType().FullName ?? objectArgument.GetType().Name
+					: string.Empty;
+
+				return $"mode={modeName};str={SanitizeSignatureValue(stringArgument)};int={intArgument};float={floatArgument:F5};bool={boolArgument};objType={SanitizeSignatureValue(objectArgumentType)};objRuntimeType={SanitizeSignatureValue(objectArgumentRuntimeType)};objName={SanitizeSignatureValue(objectArgumentName)}";
+			}
+			catch
+			{
+				return "arg=error";
+			}
+		}
+
+		private object TryGetPersistentCall(UnityEvent unityEvent, int eventIndex)
+		{
+			if (unityEvent == null || eventIndex < 0)
+			{
+				return null;
+			}
+
+			const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+			try
+			{
+				var persistentCallsField = typeof(UnityEventBase).GetField("m_PersistentCalls", flags);
+				var persistentCallGroup = persistentCallsField != null
+					? persistentCallsField.GetValue(unityEvent)
+					: null;
+				if (persistentCallGroup == null)
+				{
+					return null;
+				}
+
+				var callsField = persistentCallGroup.GetType().GetField("m_Calls", flags);
+				var calls = callsField != null
+					? callsField.GetValue(persistentCallGroup) as System.Collections.IList
+					: null;
+				if (calls == null || eventIndex >= calls.Count)
+				{
+					return null;
+				}
+
+				return calls[eventIndex];
+			}
+			catch
+			{
+				return null;
+			}
+		}
+
+		private static object ReadFieldValue(object instance, string fieldName)
+		{
+			if (instance == null || string.IsNullOrWhiteSpace(fieldName))
+			{
+				return null;
+			}
+
+			const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+			var field = instance.GetType().GetField(fieldName, flags);
+			return field != null ? field.GetValue(instance) : null;
+		}
+
+		private static bool IsAnimatorTarget(UnityEngine.Object target)
+		{
+			return target != null && string.Equals(target.GetType().FullName, "UnityEngine.Animator", StringComparison.Ordinal);
+		}
+
+		private string BuildAnimatorIdentitySignature(UnityEngine.Object animatorObject)
+		{
+			if (!IsAnimatorTarget(animatorObject))
+			{
+				return "none";
+			}
+
+			var builder = new StringBuilder(384);
+			var runtimeController = ReadPropertyValue(animatorObject, "runtimeAnimatorController") as UnityEngine.Object;
+			var avatar = ReadPropertyValue(animatorObject, "avatar") as UnityEngine.Object;
+			builder.Append("controller=").Append(SanitizeSignatureValue(runtimeController != null ? runtimeController.name : string.Empty)).Append(';');
+			builder.Append("avatar=").Append(SanitizeSignatureValue(avatar != null ? avatar.name : string.Empty)).Append(';');
+
+			var parameters = ReadPropertyValue(animatorObject, "parameters") as System.Array;
+			builder.Append("paramCount=").Append(parameters != null ? parameters.Length : 0).Append('[');
+			if (parameters != null)
+			{
+				for (int i = 0; i < parameters.Length; i++)
+				{
+					var parameter = parameters.GetValue(i);
+					var parameterName = ReadPropertyValue(parameter, "name") as string ?? string.Empty;
+					var parameterType = Convert.ToInt32(ReadPropertyValue(parameter, "type") ?? 0);
+					builder.Append(SanitizeSignatureValue(parameterName)).Append(':').Append(parameterType).Append('|');
+				}
+			}
+			builder.Append("];");
+
+			var clips = runtimeController != null
+				? ReadPropertyValue(runtimeController, "animationClips") as System.Array
+				: null;
+			builder.Append("clipCount=").Append(clips != null ? clips.Length : 0).Append('[');
+			if (clips != null)
+			{
+				for (int i = 0; i < clips.Length; i++)
+				{
+					var clip = clips.GetValue(i) as UnityEngine.Object;
+					if (clip == null)
+					{
+						continue;
+					}
+
+					var clipLength = Convert.ToSingle(ReadPropertyValue(clip, "length") ?? 0f);
+					builder.Append(SanitizeSignatureValue(clip.name)).Append(':').Append(clipLength.ToString("F3")).Append('|');
+				}
+			}
+			builder.Append(']');
+			return builder.ToString();
+		}
+
+		private static object ReadPropertyValue(object instance, string propertyName)
+		{
+			if (instance == null || string.IsNullOrWhiteSpace(propertyName))
+			{
+				return null;
+			}
+
+			const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+			var property = instance.GetType().GetProperty(propertyName, flags);
+			return property != null ? property.GetValue(instance, null) : null;
+		}
+
+		private static string SanitizeSignatureValue(string value)
+		{
+			if (string.IsNullOrEmpty(value))
+			{
+				return string.Empty;
+			}
+
+			return value
+				.Replace("\\", "/")
+				.Replace(";", "_")
+				.Replace("|", "_")
+				.Replace("[", "(")
+				.Replace("]", ")")
+				.Replace(":", "-")
+				.Replace("=", "~");
 		}
 
 		private static string ComputeSha256Hex(string value)
@@ -732,6 +923,13 @@ namespace AvatarScriptPack
 
 				return builder.ToString();
 			}
+		}
+
+		private string BuildStableProfileKeyId(bool includeHierarchyPathInIdentity)
+		{
+			var identityPayload = BuildStableIdentityPayload(includeHierarchyPathInIdentity);
+			DebugOnlyLog($"StableProfileKey identity payload (includeHierarchyPath={includeHierarchyPathInIdentity}): {identityPayload}");
+            return $"v1|{ComputeSha256Hex(identityPayload)}";
 		}
 
 		private float GetEffectiveDoubleClickInterval()

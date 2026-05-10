@@ -784,11 +784,10 @@ namespace CustomKeyEvents.Configuration
 
         private static List<string> BuildStableKeyCandidates(CustomKeyEvent component, string preferredKey)
         {
-            var candidates = new List<string>(4);
+            var candidates = new List<string>(3);
             AddStableKeyCandidate(candidates, preferredKey);
             AddStableKeyCandidate(candidates, component.GetStableProfileKey(false));
             AddStableKeyCandidate(candidates, component.GetStableProfileKey(true));
-            AddStableKeyCandidate(candidates, component.GetLegacyStableProfileKey());
             return candidates;
         }
 

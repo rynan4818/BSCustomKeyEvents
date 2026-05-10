@@ -6,12 +6,12 @@
           <text text="Hierarchy Path + Component Ordinal" font-size="3.5" color="#66CCFF" preferred-width="95" />
         </horizontal>
         <horizontal pref-width="100">
-          <text text="~selectedComponentPath" font-size="3" preferred-width="95" />
-          <text text="~selectedComponentOrdinal" font-size="3" preferred-width="95" />
+          <text text="~selectedComponentPath" font-size="3"/>
+          <text text="~selectedComponentOrdinal" font-size="3"/>
         </horizontal>
         <horizontal pref-width="100">
-          <text text="Active Duration (session):" font-size="3" preferred-width="45" />
-          <text text="~selectedComponentActiveDuration" font-size="3" preferred-width="45" />
+          <text text="Active Duration (session):" font-size="3"/>
+          <text text="~selectedComponentActiveDuration" font-size="3"/>
         </horizontal>
         <horizontal pref-width="100">
           <dropdown-list-setting id="component-dropdown" text="Target Component" value="selectedComponent" options="componentOptions" size-delta-x="75" preferred-width="75" apply-on-change="true" />

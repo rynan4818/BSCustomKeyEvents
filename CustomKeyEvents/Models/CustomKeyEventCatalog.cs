@@ -129,20 +129,7 @@ namespace CustomKeyEvents.Models
 		private static CustomKeyEventOption CreateOptionFromProfile(string stableKey, CustomKeyEventProfile profile)
 		{
 			var hierarchyPath = profile.HierarchyPath ?? string.Empty;
-			var componentOrdinal = profile.ComponentOrdinal;
-			if (string.IsNullOrWhiteSpace(hierarchyPath) || componentOrdinal <= 0)
-			{
-				ExtractStableKeyMetadata(stableKey, out var stableKeyHierarchyPath, out var stableKeyComponentOrdinal);
-				if (string.IsNullOrWhiteSpace(hierarchyPath))
-				{
-					hierarchyPath = stableKeyHierarchyPath;
-				}
-
-				if (componentOrdinal <= 0)
-				{
-					componentOrdinal = stableKeyComponentOrdinal;
-				}
-			}
+			var componentOrdinal = profile.ComponentOrdinal > 0 ? profile.ComponentOrdinal : 1;
 
 			var keyConfigurationSignature = ResolveKeyConfigurationSignature(stableKey, profile);
 			var objectName = string.IsNullOrWhiteSpace(profile.ObjectName)
@@ -224,30 +211,6 @@ namespace CustomKeyEvents.Models
 			return separatorIndex >= 0 && separatorIndex + 1 < stableKey.Length
 				? stableKey.Substring(separatorIndex + 1)
 				: string.Empty;
-		}
-
-		private static void ExtractStableKeyMetadata(string stableKey, out string hierarchyPath, out int componentOrdinal)
-		{
-			hierarchyPath = string.Empty;
-			componentOrdinal = 0;
-			if (string.IsNullOrWhiteSpace(stableKey))
-			{
-				return;
-			}
-
-			int firstSeparator = stableKey.LastIndexOf("|#", StringComparison.Ordinal);
-			int secondSeparator = stableKey.LastIndexOf('|');
-			if (firstSeparator < 0 || secondSeparator <= firstSeparator + 2)
-			{
-				return;
-			}
-
-			hierarchyPath = stableKey.Substring(0, firstSeparator);
-			string ordinalText = stableKey.Substring(firstSeparator + 2, secondSeparator - (firstSeparator + 2));
-			if (!int.TryParse(ordinalText, out componentOrdinal))
-			{
-				componentOrdinal = 0;
-			}
 		}
 
 		private static string BuildStoredProfileSummary(CustomKeyEventProfile profile)
