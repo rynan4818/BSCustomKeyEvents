@@ -186,6 +186,29 @@ namespace CustomKeyEvents.UI
 			}
 		}
 
+		[UIValue("selectedTargetDisplay")]
+		public string SelectedTargetDisplay
+		{
+			get
+			{
+				if (ReferenceEquals(selectedComponentOption, CustomKeyEventCatalog.NoComponent) || selectedComponentOption == null)
+				{
+					return "(no component selected)";
+				}
+
+				var ordinalText = selectedComponentOption.ComponentOrdinal > 0
+					? $"#{selectedComponentOption.ComponentOrdinal}"
+					: "#?";
+				var hierarchyPath = string.IsNullOrWhiteSpace(selectedComponentOption.HierarchyPath)
+					? "(no path)"
+					: selectedComponentOption.HierarchyPath;
+				var activeDurationText = selectedComponentOption.ActiveDurationSeconds.HasValue
+					? $"{selectedComponentOption.ActiveDurationSeconds.Value:F1}sec"
+					: "unloaded";
+				return $"{ordinalText} {hierarchyPath}@{activeDurationText}";
+			}
+		}
+
 		[UIValue("selectedComponentSummary")]
 		public string SelectedComponentSummary => GetSelectedComponent()?.GetDefaultSettingsSummary()
 			?? BuildStoredProfileSummary(GetSelectedProfile())
@@ -1151,6 +1174,7 @@ namespace CustomKeyEvents.UI
 			NotifyPropertyChanged(nameof(HasSelectedComponent));
 			NotifyPropertyChanged(nameof(HasSelectedTarget));
 			NotifyPropertyChanged(nameof(ResetActionButtonText));
+			NotifyPropertyChanged(nameof(SelectedTargetDisplay));
 			NotifyPropertyChanged(nameof(SelectedComponentPath));
 			NotifyPropertyChanged(nameof(SelectedComponentOrdinal));
 			NotifyPropertyChanged(nameof(SelectedComponentActiveDuration));
