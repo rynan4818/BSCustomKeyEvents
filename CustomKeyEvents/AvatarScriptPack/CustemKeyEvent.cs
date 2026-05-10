@@ -356,12 +356,13 @@ namespace AvatarScriptPack
 
 		public string GetHierarchyPath()
 		{
-			var pathParts = new Stack<string>();
+			var pathParts = new List<string>();
 			for (var current = transform; current != null; current = current.parent)
 			{
-				pathParts.Push(current.name);
+				pathParts.Add(current.name);
 			}
 
+			pathParts.Reverse();
 			return string.Join("/", pathParts.ToArray());
 		}
 
